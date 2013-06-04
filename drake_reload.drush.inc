@@ -22,6 +22,13 @@ function drake_reload_drush_command() {
     'bootstrap' => DRUSH_BOOTSTRAP_DRUSH,
   );
 
+  $items['drake-reload-install'] = array(
+    'description' => 'Install all parts for drake_reload.',
+    // 'options' => array(
+    //   'file' => 'Use specified file.',
+    // ),
+    'bootstrap' => DRUSH_BOOTSTRAP_DRUSH,
+  );
 
   return $items;
 }
@@ -37,6 +44,8 @@ function drake_reload_drush_help($section) {
       return dt('Generate Drake Reload based drakefiles.');
     case 'drush:drake_reload_generate':
       return dt("Generate drakefile.");
+    case 'drush:drake_reload_install':
+      return dt("Install all parts for drake_reload.");
   }
 }
 
@@ -134,4 +143,9 @@ function drush_drake_reload_generate($filename = NULL) {
   else {
     drush_print($contents);
   }
+}
+
+function drush_drake_reload_install() {
+  $res = drush_invoke_process('@self', 'pm-download', array('drush_situs'), array('no' => TRUE), TRUE);
+  $res = drush_invoke_process('@self', 'pm-download', array('drush_drake'), array('no' => TRUE), TRUE);
 }
