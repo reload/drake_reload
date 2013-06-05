@@ -2,6 +2,9 @@
 
 $api = 1;
 
+/*
+ * (Re-)Build a site using Situs.
+ */
 $tasks['reload-situs'] = array(
   'action' => 'drush',
   'command' => 'situs-build',
@@ -11,10 +14,29 @@ $tasks['reload-situs'] = array(
   ),
 );
 
+/**
+ * Build a site by cloning a git repository.
+ */
+$tasks['reload-git-clone'] = array(
+  'action' => 'shell',
+  'command' => context('cd [root:file:dirname]; git clone [repo] [root:file:basename]'),
+);
+
+/**
+ * Rebuild git checkout by using git pull.
+ */
+$tasks['reload-git-pull'] = array(
+  'action' => 'shell',
+  'command' => context('cd [root]; git pull'),
+);
+
+/*
+ * Set up git flow in a git repository.
+ */
 $tasks['reload-flow-setup'] = array(
   'action' => 'reload-git-flow-setup',
   'message' => 'Set up git flow',
-  'git-root' => context('[root]/profiles/ida'),
+  'git-root' => context('git-root'),
   'prefix' => context_optional('flow-prefix', ''),
 );
 
