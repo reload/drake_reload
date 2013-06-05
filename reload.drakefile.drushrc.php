@@ -49,7 +49,7 @@ $tasks['reload-flow-setup'] = array(
  */
 $tasks['reload-import-site'] = array(
   // The import-db task is expected to be defined in the site drakefile.
-  'depends' => array('reload-drop-db', 'import-db', 'reload-sanitize', 'reload-updb', 'enable-modules'),
+  'depends' => array('reload-drop-db', 'import-db', 'reload-sanitize', 'reload-updb', 'enable-modules', 'reload-cc-all'),
 );
 
 /*
@@ -97,6 +97,16 @@ $tasks['reload-updb'] = array(
   'args' => array(
     'y' => TRUE,
   ),
+  'target' => context('@sync_target'),
+);
+
+/**
+ * Clear cache.
+ */
+$tasks['reload-cc-all'] = array(
+  'action' => 'drush',
+  'command' => 'cc',
+  'args' => array('all'),
   'target' => context('@sync_target'),
 );
 
