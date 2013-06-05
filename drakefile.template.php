@@ -10,7 +10,7 @@ $api = 1;
 $context = array(
 );
 
-$tasks['build'] = array(
+$tasks['build-make'] = array(
   'depends' => array('reload-situs', 'reload-flow-setup'),
   'help' => 'Build site from nothing but a make file.',
   'context' => array(
@@ -19,12 +19,29 @@ $tasks['build'] = array(
   ),
 );
 
-$tasks['rebuild'] = array(
+$tasks['rebuild-make'] = array(
   'depends' => array('reload-situs', 'reload-flow-setup'),
   'help' => 'Rebuild the current site.',
   'context' => array(
     'root' => context('@self:site:root'),
     'make-file' => context('[@self:site:root]/%make_file_path%'),
+  ),
+);
+
+$tasks['build-git'] = array(
+  'depends' => array('reload-git-clone'),
+  'help' => 'Build site from nothing but a make file.',
+  'context' => array(
+    'root' => drake_argument(1, 'Directory to build to.'),
+    'repo' => context('repository'),
+  ),
+);
+
+$tasks['rebuild-git'] = array(
+  'depends' => array('reload-git-pull'),
+  'help' => 'Rebuild the current site.',
+  'context' => array(
+    'root' => context('@self:site:root'),
   ),
 );
 

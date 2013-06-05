@@ -58,10 +58,26 @@ function drush_drake_reload_generate($filename = NULL) {
 
   $global_replacements['%site_name%'] = trim(drush_prompt('Site name', '', TRUE));
 
-  $git_flow = drush_confirm(dt('Use git flow?'));
+  $type = drush_choice(array('make' => 'Make', 'git' => 'Git'), dt('Git checkout or make file?'));
+  if (!$type) {
+    return drush_user_abort();
+  }
 
-  drush_print(dt('Enter makefile filename relative to site root. Most likely profiles/<profile>/build_<profile>.make.'));
-  $global_replacements['%make_file_path%'] = trim(drush_prompt("Make file path: ", '', TRUE));
+  $git_flow = $type == 'git' ? FALSE : drush_confirm(dt('Use git flow?'));
+
+  if ($type == 'make') {
+    // Special options for make file based drakefile.
+    drush_print(dt('Enter makefile URL.'));
+    $global_replacements['%make_file_url%'] = trim(drush_prompt("Make file URL: ", '', TRUE));
+
+    drush_print(dt('Enter makefile filename relative to site root. Most likely profiles/<profile>/build_<profile>.make.'));
+    $global_replacements['%make_file_path%'] = trim(drush_prompt("Make file path: ", '', TRUE));
+  }
+  elseif ($type == 'git') {
+    // Special options for git based drakefile.
+    drush_print(dt('Enter Git repository URL.'));
+    $global_replacements['%git_url%'] = trim(drush_prompt("Git repo URL: ", '', TRUE));
+  }
 
   $envs = array();
   drush_print(dt('Please enter environments for site in the form "<env>,<alias>,<name>" where:'));
@@ -104,13 +120,30 @@ function drush_drake_reload_generate($filename = NULL) {
   foreach ($chunks as &$chunk) {
     // Add envs to $context.
     if (preg_match('{\$context = }', $chunk)) {
-      $aliases = array();
+      $context = array();
       foreach ($envs as $env => $def) {
         list($alias, $name) = $def;
-        $aliases[] = '  // ' . $name . ' site alias.';
-        $aliases[] = "  '@env." . $env. "' => '" . $alias . "',";
+        $context[] = '  // ' . $name . ' site alias.';
+        $context[] = "  '@env." . $env. "' => '" . $alias . "',";
       }
-      $chunk = preg_replace('{\$context = array\(\n}', "\$context = array(\n" . implode("\n", $aliases) . "\n", $chunk);
+
+      if ($type == 'make') {
+        $context[] = '  // Bootstrap makefile.';
+        $context[] = "  'makefile' => '%make_file_url%',";
+      }
+      elseif ($type == 'git') {
+        $context[] = '  // Git repository.';
+        $context[] = "  'repository' => '%git_url%',";
+      }
+      $chunk = preg_replace('{\$context = array\(\n}', "\$context = array(\n" . implode("\n", $context) . "\n", $chunk);
+    }
+
+    if (preg_match('{\$tasks\[\'((?:re)?build)-(make|git)\'\] = }', $chunk, $matches)) {
+      if ($matches[2] != $type) {
+        continue;
+      }
+      // Fix the task name.
+      $chunk = preg_replace('{\$tasks\[\'((?:re)?build)-(make|git)\'\]}', '\$tasks[\'\1\']', $chunk);
     }
 
     // Clone import-prod to each env.
