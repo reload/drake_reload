@@ -217,6 +217,23 @@ function drush_drake_reload_generate($filename = NULL) {
 function drush_drake_reload_install() {
   $res = drush_invoke_process('@self', 'pm-download', array('drush_situs'), array('no' => TRUE), TRUE);
   $res = drush_invoke_process('@self', 'pm-download', array('drush_drake'), array('no' => TRUE), TRUE);
+
+  // Check that mole_zero is available.
+  $per_user_config_dir = drush_get_context('DRUSH_PER_USER_CONFIGURATION');
+  if (!empty($per_user_config_dir)) {
+    if (!file_exists($per_user_config_dir . '/r.aliases.drushrc.php')) {
+      drush_log(dt('mole_zero not detected. Fetching r.aliases.drushrc.php from reload@ding.reload.dk...'), 'status');
+      $command = 'scp 2>&1 reload@ding.reload.dk:mole_zero/r.aliases.drushrc.php ' .
+        $per_user_config_dir . '/r.aliases.drushrc.php';
+      $res = drush_shell_exec($command);
+      $errors = file_get_contents($err_file);
+      if (!$res) {
+        drush_print('Error fetching r.aliases.drushrc.php, scp output:');
+        drush_print(join("\n", drush_shell_exec_output()));
+        return drush_set_error('MOLE_ZERO_SETUP_ERROR', dt('Error setting up mole_zero.'));
+      }
+    }
+  }
 }
 
 function drush_drake_reload_bootstrap_validate($alias = NULL, $path = NULL) {
