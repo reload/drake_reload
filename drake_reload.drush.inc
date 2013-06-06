@@ -92,6 +92,11 @@ function drush_drake_reload_generate($filename = NULL) {
 
   $git_flow = $type == 'git' ? FALSE : drush_confirm(dt('Use git flow?'));
 
+  if ($git_flow) {
+    drush_print(dt('Enter path to flowify (relative to site root, example: "profiles/<profile>").'));
+    $global_replacements['%flow_path%'] = trim(drush_prompt("Flowify repo: ", '', TRUE));
+  }
+
   if ($type == 'make') {
     // Special options for make file based drakefile.
     drush_print(dt('Enter makefile URL.'));
@@ -161,6 +166,10 @@ function drush_drake_reload_generate($filename = NULL) {
       elseif ($type == 'git') {
         $context[] = '  // Git repository.';
         $context[] = "  'repository' => '%git_url%',";
+      }
+      if ($git_flow) {
+        $context[] = '  // Git Flow path.';
+        $context[] = "  'git-root' => context('[root]/%flow_path%'),";
       }
       $chunk = preg_replace('{\$context = array\(\n}', "\$context = array(\n" . implode("\n", $context) . "\n", $chunk);
     }
