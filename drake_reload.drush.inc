@@ -24,9 +24,19 @@ function drake_reload_drush_command() {
 
   $items['drake-reload-install'] = array(
     'description' => 'Install all parts for drake_reload.',
+    'bootstrap' => DRUSH_BOOTSTRAP_DRUSH,
+  );
+
+  $items['drake-reload-bootstrap'] = array(
+    'description' => 'Run Drake build for a site alias.',
+    'arguments' => array(
+      'alias' => 'Alias for site to bootstrap.',
+      'path' => 'The path to build to.',
+    ),
     // 'options' => array(
     //   'file' => 'Use specified file.',
     // ),
+    'aliases' => array('drb'),
     'bootstrap' => DRUSH_BOOTSTRAP_DRUSH,
   );
 
@@ -42,10 +52,27 @@ function drake_reload_drush_help($section) {
       return dt('Drake Reload');
     case 'meta:drake_reload:summary':
       return dt('Generate Drake Reload based drakefiles.');
-    case 'drush:drake_reload_generate':
+    case 'drush:drake-reload-generate':
       return dt("Generate drakefile.");
-    case 'drush:drake_reload_install':
+    case 'drush:drake-reload-install':
       return dt("Install all parts for drake_reload.");
+    case 'drush:drake-reload-bootstrap':
+      return dt("Run Drake build for a site alias.
+
+The site alias should have a drake_reload setting that points to the drakefile.
+
+Example:
+\$aliases['site.common'] = array(
+  'remote-host' => 'site.dk',
+  'remote-user' => 'reload',
+  'drake_reload' => array(
+    'drakefile' => 'https://raw.github.com/reload/site/master/sites/all/drush/drakefile.php',
+  ),
+);
+
+Preferably in mole_zero (ask someone if you have no clue what that means).
+
+");
   }
 }
 
@@ -181,4 +208,39 @@ function drush_drake_reload_generate($filename = NULL) {
 function drush_drake_reload_install() {
   $res = drush_invoke_process('@self', 'pm-download', array('drush_situs'), array('no' => TRUE), TRUE);
   $res = drush_invoke_process('@self', 'pm-download', array('drush_drake'), array('no' => TRUE), TRUE);
+}
+
+function drush_drake_reload_bootstrap_validate($alias = NULL, $path = NULL) {
+  if (empty($alias)) {
+    return drush_set_error('NO_ALIAS', dt('No alias? What am I supposed to do?'));
+  }
+  $site_record = drush_sitealias_get_record($alias);
+  if (empty($site_record)) {
+    return drush_set_error('BAD_ALIAS', dt("Don't know that alias."));
+  }
+  drush_set_context('DRAKE_RELOAD_SITEALIAS', $site_record);
+
+  if (empty($site_record['drake_reload']['drakefile'])) {
+    return drush_set_error('NO_DRAKEFILE', dt('No drakefile set on project. See drush help drb for help on this.'));
+  }
+
+  if (empty($path)) {
+    return drush_set_error('NO_PATH', dt("No path to build to? You think I'm a mind reader?"));
+  }
+
+  if (!file_exists(dirname($path))) {
+    return drush_set_error('PARENT_DOES_NOT_EXIST', dt("Build path parent does not exist."));
+  }
+}
+
+function drush_drake_reload_bootstrap($alias = NULL, $path = NULL) {
+  $site_record = drush_get_context('DRAKE_RELOAD_SITEALIAS', NULL);
+
+  drush_log('Running Drush build', 'status');
+  $res = drush_invoke_process('@none', 'drake', array('build', $path), array('file' => $site_record['drake_reload']['drakefile']), TRUE);
+
+  if (!$res || $res['error_status'] != 0) {
+    return drush_set_error('DRAKE_FAILED', dt("Drake failed. I'm sorry about that."));
+  }
+
 }
