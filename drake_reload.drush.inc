@@ -269,4 +269,14 @@ function drush_drake_reload_bootstrap($alias = NULL, $path = NULL) {
     return drush_set_error('DRAKE_FAILED', dt("Drake failed. I'm sorry about that."));
   }
 
+  if (!empty($site_record['drake_reload']['bootstrap_message'])) {
+    $message = $site_record['drake_reload']['bootstrap_message'];
+    if (is_array($message)) {
+      $message = join("\n", $message);
+    }
+    drush_print("There's a message attached to the alias:");
+    drush_print();
+    drush_print(trim($message));
+  }
+  drush_print('Done.');
 }
