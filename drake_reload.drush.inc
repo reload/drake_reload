@@ -253,6 +253,10 @@ function drush_drake_reload_bootstrap_validate($alias = NULL, $path = NULL) {
   if (!file_exists(dirname($path))) {
     return drush_set_error('PARENT_DOES_NOT_EXIST', dt("Build path parent does not exist."));
   }
+
+  if (file_exists($path)) {
+    return drush_set_error('DIR_EXISTS', dt("Build path already exists, aborting."));
+  }
 }
 
 function drush_drake_reload_bootstrap($alias = NULL, $path = NULL) {
