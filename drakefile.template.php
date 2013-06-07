@@ -54,6 +54,15 @@ $tasks['import-%env%'] = array(
   ),
 );
 
+$tasks['import-sql'] = array(
+  'depends' => array('reload-import-file'),
+  'help' => 'Import database form SQL dump.',
+  'context' => array(
+    '@sync_target' => drake_argument('1', "Target alias."),
+    'file' => drake_argument('2', 'SQL file to load.'),
+  ),
+);
+
 /*
  * Defines some way of loading an existing database from somewhere. It is
  * invoked by reload-import-site.
@@ -66,14 +75,10 @@ $tasks['import-db'] = array(
 );
 
 /*
- * Example alternative import-db, this using reload-load-db.
+ * Load a database from a SQL dump.
  */
-$tasks['import-db-alternative'] = array(
+$tasks['import-file'] = array(
   'depends' => array('reload-load-db', 'sanitize'),
-  'context' => array(
-    'file' => drake_argument(1, 'SQL file to load.'),
-    'target' => drake_argument('2', "Target alias."),
-  ),
 );
 
 /*

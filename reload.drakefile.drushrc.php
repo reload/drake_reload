@@ -53,6 +53,14 @@ $tasks['reload-import-site'] = array(
 );
 
 /*
+ * Same as reload-import-site, but using the import-file task instead.
+ */
+$tasks['reload-import-file'] = array(
+  // The import-file task is expected to be defined in the site drakefile.
+  'depends' => array('reload-drop-db', 'import-file', 'reload-sanitize', 'reload-updb', 'enable-modules', 'reload-cc-all'),
+);
+
+/*
  * Default no-op task.
  *
  * This just makes enable-modules optional in the site drakefile.
@@ -138,12 +146,15 @@ $tasks['reload-sync-db'] = array(
 /*
  * Import a database by loading an (possibly compressed) SQL dump.
  */
-$tasks['reload-import-db'] = array(
+$tasks['reload-load-db'] = array(
   'action' => 'reload-import-db',
   'file' => context('file'),
   'target' => context('@sync_target'),
 );
 
+/*
+ * Action that loads an SQL file.
+ */
 $actions['reload-import-db'] = array(
   'callback' => 'reload_import_db',
   'parameters' => array(
