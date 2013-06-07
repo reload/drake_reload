@@ -144,10 +144,6 @@ function drush_drake_reload_generate($filename = NULL) {
     }
   } while (!empty($env));
 
-  if (empty($envs)) {
-    return drush_set_error('NO_ENVS', dt('No environments given.'));
-  }
-
   $new_chunks = array();
   foreach ($chunks as &$chunk) {
     // Add envs to $context.
