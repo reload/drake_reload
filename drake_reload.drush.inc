@@ -220,6 +220,12 @@ function drush_drake_reload_install() {
   if (!empty($per_user_config_dir)) {
     if (!file_exists($per_user_config_dir . '/r.aliases.drushrc.php')) {
       drush_log(dt('mole_zero not detected. Fetching r.aliases.drushrc.php from reload@ding.reload.dk...'), 'status');
+      $fetch = TRUE;
+    }
+    else {
+      $fetch = drush_confirm(dt('mole_zero detected, refresh it?'));
+    }
+    if ($fetch) {
       $command = 'scp 2>&1 reload@ding.reload.dk:mole_zero/r.aliases.drushrc.php ' .
         $per_user_config_dir . '/r.aliases.drushrc.php';
       $res = drush_shell_exec($command);
