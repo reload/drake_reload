@@ -92,12 +92,3 @@ $tasks['sanitize'] = array(
     array('command' => 'vset', 'args' => array('site_name', '%site_name% ' . php_uname('n'))),
   ),
 );
-
-$tasks['enable-modules'] = array(
-  'action' => 'drush',
-  'command' => 'pm-enable',
-  'args' => array(
-    'y' => TRUE,
-    'ida_test_config',
-  ),
-);
