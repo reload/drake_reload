@@ -102,8 +102,9 @@ function drush_drake_reload_generate($filename = NULL) {
     drush_print(dt('Enter makefile URL.'));
     $global_replacements['%make_file_url%'] = trim(drush_prompt("Make file URL: ", '', TRUE));
 
-    drush_print(dt('Enter makefile filename relative to site root. Most likely profiles/<profile>/build_<profile>.make.'));
-    $global_replacements['%make_file_path%'] = trim(drush_prompt("Make file path: ", '', TRUE));
+    drush_print(dt('Enter makefile filename relative to site root. Most likely profiles/<profile>/build_<profile>.make. Or leave empty to always build from the URL.'));
+    $path = trim(drush_prompt("Make file path: ", '', FALSE));
+    $global_replacements['%make_file_path%'] = empty($path) ? "makefile"  : "[@self:site:root]/" . $path;
   }
   elseif ($type == 'git') {
     // Special options for git based drakefile.

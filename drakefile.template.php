@@ -24,7 +24,7 @@ $tasks['rebuild-make'] = array(
   'help' => 'Rebuild the current site.',
   'context' => array(
     'root' => context('@self:site:root'),
-    'make-file' => context('[@self:site:root]/%make_file_path%'),
+    'make-file' => context('%make_file_path%'),
   ),
 );
 
