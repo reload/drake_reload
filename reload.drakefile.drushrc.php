@@ -30,6 +30,24 @@ $tasks['reload-git-pull'] = array(
   'command' => context('cd [root]; git pull'),
 );
 
+/**
+ * Build a ding site.
+ */
+$tasks['reload-ding-build'] = array(
+  'action' => 'reload-ding-build',
+  'root' => context('root'),
+  'repository' => context('repository'),
+);
+
+/**
+ * Re-build a ding site.
+ */
+$tasks['reload-ding-rebuild'] = array(
+  'action' => 'reload-ding-rebuild',
+  'root' => context('root'),
+  'repository' => context('repository'),
+);
+
 /*
  * Set up git flow in a git repository.
  */
@@ -251,5 +269,122 @@ EOF;
     if (!drush_shell_exec_interactive($command)) {
       return drake_action_error(dt('Error checking out branch "@branch"', array('@branch' => $branch)));
     }
+  }
+}
+
+$actions['reload-ding-build'] = array(
+  'callback' => 'reload_ding_build',
+  'parameters' => array(
+    'root' => 'Directory to build to.',
+    'repository' => 'URL to the ding_deploy repository.',
+  ),
+);
+
+function reload_ding_build($context) {
+  // Initial sanity checks.
+  if (file_exists($context['root'])) {
+    return drake_action_error(dt('Root "@path" already exists.', array('@path' => $context['root'])));
+  }
+  $parent = dirname($context['root']);
+  if (!file_exists($parent)) {
+    return drake_action_error(dt('Root parent "@parent" does not exists.', array('@parent' => $parent)));
+  }
+
+  // Temporary directory for ding_deploy checkout.
+  $deploy = drush_tempdir('ding_deploy_') . '/ding-deploy';
+  $command = 'git 2>&1 clone ' . $context['repository'] . ' ' . $deploy;
+  drush_print($command);
+  if (!drush_shell_exec($command)) {
+    foreach (drush_shell_exec_output() as $line) {
+      drush_log('git: ' . $line, 'error');
+    }
+
+    return drake_action_error(dt('Error cloning ding_deploy from "@repo"', array('@repo' => $context['repository'])));
+  }
+
+  // Run make with same args as ding_build.py would.
+  $args = array($deploy . '/ding.make', $context['root']);
+  $options = array(
+    'contrib-destination' => 'profiles/ding',
+    'working-copy' => TRUE,
+  );
+  $res = drush_invoke_process('@none', 'make', $args, $options, TRUE);
+
+  if (!$res || $res['error_status'] != 0) {
+    return drake_action_error(dt('Drush Make failed.'));
+  }
+
+  // Copy ding.profile into the profile folder.
+  $command = 'cp ' . $deploy . '/ding.profile ' . $context['root'] . '/profiles/ding';
+  if (!drush_shell_exec($command)) {
+    return drake_action_error(dt('Error copying ding.profile.'));
+  }
+
+  // Copy the drakefile into the profile folder.
+  $command = 'cp ' . $deploy . '/drakefile.php ' . $context['root'] . '/profiles/ding';
+  if (!drush_shell_exec($command)) {
+    return drake_action_error(dt('Error copying drakefile.'));
+  }
+}
+
+$actions['reload-ding-rebuild'] = array(
+  'callback' => 'reload_ding_rebuild',
+  'parameters' => array(
+    'root' => 'Directory to rebuild to.',
+    'repository' => 'URL to the ding_deploy repository.',
+  ),
+);
+
+function reload_ding_rebuild($context) {
+  // Initial sanity checks.
+  $profile = $context['root'] . '/profiles/ding';
+  if (!file_exists($profile)) {
+    return drake_action_error(dt("Couldn't find ding profile dir in @path.", array('@path' => $context['root'])));
+  }
+
+  // Temporary directory for ding_deploy checkout.
+  $deploy = drush_tempdir('ding_deploy_') . '/ding-deploy';
+  $command = 'git 2>&1 clone ' . $context['repository'] . ' ' . $deploy;
+  if (!drush_shell_exec($command)) {
+    foreach (drush_shell_exec_output() as $line) {
+      drush_log('git: ' . $line, 'error');
+    }
+
+    return drake_action_error(dt('Error cloning ding_deploy from "@repo"', array('@repo' => $context['repository'])));
+  }
+
+  $command = 'rm -rf 2>&1 ' . $profile;
+  if (!drush_shell_exec($command)) {
+    foreach (drush_shell_exec_output() as $line) {
+      drush_log('rm: ' . $line, 'error');
+    }
+
+    return drake_action_error(dt('Error deleting profile directory "@profile"', array('@profile' => $profile)));
+  }
+
+
+  // Run make with same args as ding_build.py would.
+  $args = array($deploy . '/ding.make', $profile);
+  $options = array(
+    'no-core' => TRUE,
+    'contrib-destination' => '.',
+    'working-copy' => TRUE,
+  );
+  $res = drush_invoke_process('@none', 'make', $args, $options, TRUE);
+
+  if (!$res || $res['error_status'] != 0) {
+    return drake_action_error(dt('Drush Make failed.'));
+  }
+
+  // Copy ding.profile into the profile folder.
+  $command = 'cp ' . $deploy . '/ding.profile ' . $context['root'] . '/profiles/ding';
+  if (!drush_shell_exec($command)) {
+    return drake_action_error(dt('Error copying ding.profile.'));
+  }
+
+  // Copy the drakefile into the profile folder.
+  $command = 'cp ' . $deploy . '/drakefile.php ' . $context['root'] . '/profiles/ding';
+  if (!drush_shell_exec($command)) {
+    return drake_action_error(dt('Error copying drakefile.'));
   }
 }

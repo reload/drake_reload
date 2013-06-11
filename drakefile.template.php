@@ -45,6 +45,24 @@ $tasks['rebuild-git'] = array(
   ),
 );
 
+$tasks['build-ding'] = array(
+  'depends' => array('reload-ding-build'),
+  'help' => 'Build site from nothing but a make file.',
+  'context' => array(
+    'root' => drake_argument(1, 'Directory to build to.'),
+    'repo' => context('repository'),
+  ),
+);
+
+$tasks['rebuild-ding'] = array(
+  'depends' => array('reload-ding-rebuild'),
+  'help' => 'Rebuild the current site.',
+  'context' => array(
+    'root' => context('@self:site:root'),
+    'repo' => context('repository'),
+  ),
+);
+
 $tasks['import-%env%'] = array(
   'depends' => array('reload-import-site'),
   'help' => 'Import database form "%env_name%".',
@@ -84,11 +102,31 @@ $tasks['import-file'] = array(
 /*
  * Custom sanitation function. Invoked by our own import-db.
  */
-$tasks['sanitize'] = array(
+$tasks['sanitize-nonding'] = array(
   'action' => 'drush',
   'help' => 'Sanitizes database post-import.',
   'commands' => array(
     // Set site name to "%site_name% [hostname]"
     array('command' => 'vset', 'args' => array('site_name', '%site_name% ' . php_uname('n'))),
+  ),
+);
+
+/*
+ * Custom sanitation function. Invoked by our own import-db.
+ */
+$tasks['sanitize-ding'] = array(
+  'action' => 'drush',
+  'help' => 'Sanitizes database post-import.',
+  'commands' => array(
+    // Disable trampoline first thing, or else it'll kill everything later on.
+    array(
+      'command' => 'pm-disable',
+      'args' => array('trampoline', 'y' => TRUE),
+    ),
+    // Set site name to "%site_name% [hostname]"
+    array(
+      'command' => 'vset',
+      'args' => array('site_name', '%site_name% ' . php_uname('n')),
+    ),
   ),
 );

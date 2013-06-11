@@ -85,12 +85,17 @@ function drush_drake_reload_generate($filename = NULL) {
 
   $global_replacements['%site_name%'] = trim(drush_prompt('Site name', '', TRUE));
 
-  $type = drush_choice(array('make' => 'Make', 'git' => 'Git'), dt('Git checkout or make file?'));
+  $types = array(
+    'make' => 'Make',
+    'git' => 'Git',
+    'ding' => 'Ding',
+  );
+  $type = drush_choice($types, dt('Building method?'));
   if (!$type) {
     return drush_user_abort();
   }
 
-  $git_flow = $type == 'git' ? FALSE : drush_confirm(dt('Use git flow?'));
+  $git_flow = $type == 'make' ? drush_confirm(dt('Use git flow?')) : FALSE;
 
   if ($git_flow) {
     drush_print(dt('Enter path to flowify (relative to site root, example: "profiles/<profile>").'));
@@ -110,6 +115,11 @@ function drush_drake_reload_generate($filename = NULL) {
     // Special options for git based drakefile.
     drush_print(dt('Enter Git repository URL.'));
     $global_replacements['%git_url%'] = trim(drush_prompt("Git repo URL: ", '', TRUE));
+  }
+  elseif ($type == 'ding') {
+    // And for a ding based drakefile.
+    drush_print(dt('Enter ding_deploy repository URL.'));
+    $global_replacements['%ding_url%'] = trim(drush_prompt("ding_deploy repo URL: ", '', TRUE));
   }
 
   $envs = array();
@@ -164,6 +174,10 @@ function drush_drake_reload_generate($filename = NULL) {
         $context[] = '  // Git repository.';
         $context[] = "  'repository' => '%git_url%',";
       }
+      elseif ($type == 'ding') {
+        $context[] = '  // ding_deploy repository.';
+        $context[] = "  'repository' => '%ding_url%',";
+      }
       if ($git_flow) {
         $context[] = '  // Git Flow path.';
         $context[] = "  'git-root' => context('[root]/%flow_path%'),";
@@ -171,12 +185,21 @@ function drush_drake_reload_generate($filename = NULL) {
       $chunk = preg_replace('{\$context = array\(\n}', "\$context = array(\n" . implode("\n", $context) . "\n", $chunk);
     }
 
-    if (preg_match('{\$tasks\[\'((?:re)?build)-(make|git)\'\] = }', $chunk, $matches)) {
+    if (preg_match('{\$tasks\[\'((?:re)?build)-(make|git|ding)\'\] = }', $chunk, $matches)) {
       if ($matches[2] != $type) {
         continue;
       }
       // Fix the task name.
-      $chunk = preg_replace('{\$tasks\[\'((?:re)?build)-(make|git)\'\]}', '\$tasks[\'\1\']', $chunk);
+      $chunk = preg_replace('{\$tasks\[\'((?:re)?build)-(make|git|ding)\'\]}', '\$tasks[\'\1\']', $chunk);
+    }
+
+    if (preg_match('{\$tasks\[\'(sanitize)-(nonding|ding)\'\] = }', $chunk, $matches)) {
+      if (($matches[2] == 'nonding' && $type == 'ding') ||
+        ($matches[2] == 'ding' && $type != 'ding')) {
+        continue;
+      }
+      // Fix the task name.
+      $chunk = preg_replace('{\$tasks\[\'(sanitize)-(nonding|ding)\'\]}', '\$tasks[\'\1\']', $chunk);
     }
 
     // Clone import-prod to each env.
