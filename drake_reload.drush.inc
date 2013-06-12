@@ -76,126 +76,264 @@ Preferably in mole_zero (ask someone if you have no clue what that means).
   }
 }
 
+function drake_reload_run_questions($questions, $settings) {
+  $new_settings = array();
+  $rebuilding = !empty($settings);
+  foreach ($questions as $key => $question) {
+    $default = !empty($settings[$key]) ? $settings[$key] : '';
+    // Check question dependencies.
+    if (!empty($question['depends'])) {
+      foreach ($question['depends'] as $field => $value) {
+        if ($new_settings[$field] != $value) {
+          // Skip question.
+          continue 2;
+        }
+      }
+    }
+    if (!empty($question['description'])){
+      drush_print($question['description']);
+    }
+    switch ($question['type']) {
+      case 'string':
+        $new_settings[$key] = trim(drush_prompt($question['prompt'], $default, $question['required']));
+        break;
+      case 'option':
+        $new_settings[$key] = drush_choice($question['options'], $question['prompt'] . ($rebuilding ? '[' . $default . ']' : ''));
+        if ($rebuilding) {
+          if (!$new_settings[$key] ||  drush_get_context('DRUSH_AFFIRMATIVE'))
+          $new_settings[$key] = $default;
+        }
+        if (!$new_settings[$key]) {
+          return drush_user_abort();
+        }
+        break;
+      case 'bool':
+        if ($rebuilding && drush_get_context('DRUSH_AFFIRMATIVE')) {
+          $new_settings[$key] = $default;
+        }
+        $new_settings[$key] = drush_confirm($question['prompt']);
+        break;
+      case 'envs':
+        if ($rebuilding && drush_get_context('DRUSH_AFFIRMATIVE')) {
+          $new_settings[$key] = $default;
+        }
+        $env_default = array();
+        if (!empty($settings[$key])) {
+          foreach ($settings[$key] as $env_name => $env) {
+            $env_default[] = join(',', array($env_name, $env['alias'], $env['name']));
+          }
+        }
+        do {
+          $def = array_shift($env_default);
+          $env = drush_prompt("Env: ", $def, FALSE);
+          if (!empty($env)) {
+            $parts = explode(',', $env, 3);
+            $env_id = trim($parts[0]);
+            if (!preg_match('/^[a-zA-Z0-9]*$/', $env_id)) {
+              drush_print(dt('Invalid env id.'));
+              continue;
+            }
+            if (!preg_match('/^@[a-zA-Z0-9_.-]*$/', trim($parts[1]))) {
+              drush_print(dt('Invalid alias.'));
+              continue;
+            }
+            if (isset($envs[$env_id])) {
+              drush_print(dt('Duplicate env.'));
+              continue;
+            }
+            else {
+              $envs[$env_id] = array(
+                'alias' => trim($parts[1]),
+                'name' => trim($parts[2]),
+              );
+            }
+          }
+        } while (!empty($env));
+        $new_settings['envs'] = $envs;
+        break;
+      default:
+        return drush_set_error('BAD_QUESTION', dt('Unknown question type @type.', array('@type' => $question['type'])));
+    }
+  }
+  return $new_settings;
+}
+
+function drake_reload_load_settings($filename) {
+  if (file_exists($filename)) {
+    include $filename;
+  }
+  if (is_array($drake_reload)) {
+    return $drake_reload;
+  }
+  return array();
+}
+
 function drush_drake_reload_generate($filename = NULL) {
   $template = file_get_contents(dirname(__FILE__) . '/drakefile.template.php');
   $chunks = explode("\n\n", $template);
   $global_replacements = array();
 
-  drush_print('Site name is used in comments and setting the site site_name when sanitizing database.');
-
-  $global_replacements['%site_name%'] = trim(drush_prompt('Site name', '', TRUE));
-
-  $types = array(
-    'make' => 'Make',
-    'git' => 'Git',
-    'ding' => 'Ding',
-  );
-  $type = drush_choice($types, dt('Building method?'));
-  if (!$type) {
-    return drush_user_abort();
-  }
-
-  $git_flow = $type == 'make' ? drush_confirm(dt('Use git flow?')) : FALSE;
-
-  if ($git_flow) {
-    drush_print(dt('Enter path to flowify (relative to site root, example: "profiles/<profile>").'));
-    $global_replacements['%flow_path%'] = trim(drush_prompt("Flowify repo: ", '', TRUE));
-  }
-
-  if ($type == 'make') {
-    // Special options for make file based drakefile.
-    drush_print(dt('Enter makefile URL.'));
-    $global_replacements['%make_file_url%'] = trim(drush_prompt("Make file URL: ", '', TRUE));
-
-    drush_print(dt('Enter makefile filename relative to site root. Most likely profiles/<profile>/build_<profile>.make. Or leave empty to always build from the URL.'));
-    $path = trim(drush_prompt("Make file path: ", '', FALSE));
-    $global_replacements['%make_file_path%'] = empty($path) ? "makefile"  : "[@self:site:root]/" . $path;
-  }
-  elseif ($type == 'git') {
-    // Special options for git based drakefile.
-    drush_print(dt('Enter Git repository URL.'));
-    $global_replacements['%git_url%'] = trim(drush_prompt("Git repo URL: ", '', TRUE));
-  }
-  elseif ($type == 'ding') {
-    // And for a ding based drakefile.
-    drush_print(dt('Enter ding_deploy repository URL.'));
-    $global_replacements['%ding_url%'] = trim(drush_prompt("ding_deploy repo URL: ", '', TRUE));
-  }
-
-  $envs = array();
-  drush_print(dt('Please enter environments for site in the form "<env>,<alias>,<name>" where:'));
-  drush_print();
-  drush_print('<env> is a alphanumeric short string used internally for identification (prod/stg/dev works well).');
-  drush_print();
-  drush_print('<alias> is the site alias of the environment.');
-  drush_print();
-  drush_print('<name> is a human readable name used in comments and description, "Production" and "Development" is good suggestions.');
-  drush_print();
-  drush_print(dt('Finish by entering an empty alias.'));
-  do {
-    $env = drush_prompt("Env: ", '', FALSE);
-    if (!empty($env)) {
-      $parts = explode(',', $env, 3);
-      $env_id = trim($parts[0]);
-      if (!preg_match('/^[a-zA-Z0-9]*$/', $env_id)) {
-        drush_print(dt('Invalid env id.'));
-        continue;
-      }
-      if (!preg_match('/^@[a-zA-Z0-9_.-]*$/', trim($parts[1]))) {
-        drush_print(dt('Invalid alias.'));
-        continue;
-      }
-      if (isset($envs[$env_id])) {
-        drush_print(dt('Duplicate env.'));
-        continue;
-      }
-      else {
-        $envs[$env_id] = array(trim($parts[1]), trim($parts[2]));
+  // Load custom additions from the previous drakefile.
+  $additions = '';
+  $custom_tasks = array();
+  $custom_tasks_regexp = '';
+  if (file_exists($filename)) {
+    $contents = file_get_contents($filename);
+    if (preg_match('{// ### Everything below this will be retained by drush-reload-generate ###(.*)$}s', $contents, $matches)) {
+      $additions = trim($matches[1]);
+      if ($additions) {
+        // Collect a list of tasks defined. Yeah, the regexp will fail on ' in "
+        // strings and " in ' strings, but then you're asking for it.
+        if (preg_match_all('{\$tasks\[(\'|")([^\'"]+)\1\]\s*=\s*}', $additions, $matches)) {
+          $custom_tasks = $matches[2];
+          $custom_tasks_regexp = array();
+          foreach ($custom_tasks as $task) {
+            $custom_tasks_regexp[] = preg_quote($task, '/');
+          }
+          $custom_tasks_regexp = '(' . join('|', $custom_tasks_regexp) . ')';
       }
     }
-  } while (!empty($env));
+  }
+  }
+
+  $previous_settings = drake_reload_load_settings($filename);
+  $questions = array(
+    'site_name' => array(
+      'type' => 'string',
+      'required' => TRUE,
+      'prompt' => dt('Site name'),
+      'description' => dt('Site name is used in comments and setting the site site_name when sanitizing database.'),
+    ),
+    'type' => array(
+      'type' => 'option',
+      'required' => TRUE,
+      'prompt' => dt('Building method?'),
+      'options' => array(
+        'make' => 'Make',
+        'git' => 'Git',
+        'ding' => 'Ding',
+      ),
+    ),
+    'git_flow' => array(
+      'depends' => array(
+        'type' => 'make',
+      ),
+      'type' => 'bool',
+      'prompt' => dt('Use git flow?'),
+    ),
+    'flow_path' => array(
+      'depends' => array(
+        'git_flow' => TRUE,
+      ),
+      'type' => 'string',
+      'required' => TRUE,
+      'prompt' => dt("Flowify repo"),
+      'description' => dt('Enter path to flowify (relative to site root, example: "profiles/<profile>").'),
+    ),
+    'make_file_url' => array(
+      'depends' => array(
+        'type' => 'make',
+      ),
+      'type' => 'string',
+      'prompt' => dt("Enter makefile URL"),
+    ),
+    'make_file_path' => array(
+      'depends' => array(
+        'type' => 'make',
+      ),
+      'type' => 'string',
+      'prompt' => dt("Make file path"),
+      'description' => dt('Enter makefile filename relative to site root. Most likely profiles/<profile>/build_<profile>.make. Or leave empty to always build from the URL.'),
+    ),
+    'git_url' => array(
+      'depends' => array(
+        'type' => 'git',
+      ),
+      'type' => 'string',
+      'prompt' => dt('Enter Git repository URL'),
+    ),
+    'ding_url' => array(
+      'depends' => array(
+        'type' => 'ding',
+      ),
+      'type' => 'string',
+      'prompt' => dt('Enter ding_deploy repository URL'),
+    ),
+    'envs' => array(
+      'type' => 'envs',
+      'prompt' => dt('Env'),
+      'description' => dt('Please enter environments for site in the form "<env>,<alias>,<name>" where:
+
+<env> is a alphanumeric short string used internally for identification (prod/stg/dev works well).
+
+<alias> is the site alias of the environment.
+
+<name> is a human readable name used in comments and description, "Production" and "Development" is good suggestions.
+
+Finish by entering an empty alias.'),
+
+    ),
+  );
+
+  $settings = drake_reload_run_questions($questions, $previous_settings);
+  if (!$settings) {
+    return FALSE;
+  }
+  $global_replacements['%site_name%'] = $settings['site_name'];
+  $global_replacements['%flow_path%'] = $settings['flow_path'];
+  $global_replacements['%make_file_url%'] = $settings['make_file_url'];
+  $global_replacements['%make_file_path%'] = empty($settings['make_file_path']) ? "makefile"  : "[@self:site:root]/" . $settings['make_file_path'];
+  $global_replacements['%git_url%'] = $settings['git_url'];
+  $global_replacements['%ding_url%'] = $settings['ding_url'];
 
   $new_chunks = array();
   foreach ($chunks as &$chunk) {
-    // Add envs to $context.
+    // Save settings for re-running.
+    if (preg_match('{\$drake_reload = }', $chunk)) {
+      $chunk = preg_replace('{\$drake_reload = array\(.*\);}', "\$drake_reload = " . var_export($settings, TRUE) . ";\n", trim($chunk));
+    }
+
+    // Modify global context.
     if (preg_match('{\$context = }', $chunk)) {
       $context = array();
-      foreach ($envs as $env => $def) {
-        list($alias, $name) = $def;
-        $context[] = '  // ' . $name . ' site alias.';
-        $context[] = "  '@env." . $env. "' => '" . $alias . "',";
+      // Add envs to $context.
+      foreach ($settings['envs'] as $env_name => $env) {
+        $context[] = '  // ' . $env['name'] . ' site alias.';
+        $context[] = "  '@env." . $env_name. "' => '" . $env['alias'] . "',";
       }
 
-      if ($type == 'make') {
+      if ($settings['type'] == 'make') {
         $context[] = '  // Bootstrap makefile.';
         $context[] = "  'makefile' => '%make_file_url%',";
       }
-      elseif ($type == 'git') {
+      elseif ($settings['type'] == 'git') {
         $context[] = '  // Git repository.';
         $context[] = "  'repository' => '%git_url%',";
       }
-      elseif ($type == 'ding') {
+      elseif ($settings['type'] == 'ding') {
         $context[] = '  // ding_deploy repository.';
         $context[] = "  'repository' => '%ding_url%',";
       }
-      if ($git_flow) {
+      if ($settings['git_flow']) {
         $context[] = '  // Git Flow path.';
         $context[] = "  'git-root' => context('[root]/%flow_path%'),";
       }
       $chunk = preg_replace('{\$context = array\(\n}', "\$context = array(\n" . implode("\n", $context) . "\n", $chunk);
     }
 
+    // Filter out build tasks that's not needed.
     if (preg_match('{\$tasks\[\'((?:re)?build)-(make|git|ding)\'\] = }', $chunk, $matches)) {
-      if ($matches[2] != $type) {
+      if ($matches[2] != $settings['type']) {
         continue;
       }
       // Fix the task name.
       $chunk = preg_replace('{\$tasks\[\'((?:re)?build)-(make|git|ding)\'\]}', '\$tasks[\'\1\']', $chunk);
     }
 
+    // Filter out sanitize tasks that's not needed.
     if (preg_match('{\$tasks\[\'(sanitize)-(nonding|ding)\'\] = }', $chunk, $matches)) {
-      if (($matches[2] == 'nonding' && $type == 'ding') ||
-        ($matches[2] == 'ding' && $type != 'ding')) {
+      if (($matches[2] == 'nonding' && $settings['type'] == 'ding') ||
+        ($matches[2] == 'ding' && $settings['type'] != 'ding')) {
         continue;
       }
       // Fix the task name.
@@ -205,29 +343,44 @@ function drush_drake_reload_generate($filename = NULL) {
     // Clone import-prod to each env.
     if (preg_match('{\$tasks\[\'import-%env%\'\] = }', $chunk)) {
       $imports = array();
-      foreach ($envs as $env => $def) {
-        list($alias, $name) = $def;
+      foreach ($settings['envs'] as $env_name => $env) {
         $replacements = array(
-          '%env%' => $env,
-          '%env_name%' => $name,
-          '%env_alias%' => $alias,
+          '%env%' => $env_name,
+          '%env_name%' => $env['name'],
+          '%env_alias%' => $env['alias'],
         );
         $imports[] = strtr($chunk, $replacements);
       }
       $chunk = implode("\n\n", $imports);
     }
 
+    // Filter out any tasks that in custom additions. We're doing it last so the
+    // above can rename tasks first.
+    if (preg_match('{\$tasks\[\'' . $custom_tasks_regexp . '\'\] = }', $chunk, $matches)) {
+      continue;
+    }
+
     // Remove references to git flow, if not selected.
-    if (!$git_flow) {
+    if (!$settings['git_flow']) {
       $chunk = preg_replace("{, 'reload-flow-setup'}", '', $chunk);
     }
 
+    // Replace global replacements.
     $new_chunks[] = strtr($chunk, $global_replacements);
   }
 
-  $contents = implode("\n\n", $new_chunks);
+  $contents = implode("\n\n", $new_chunks) . "\n" . $additions;
   if ($filename) {
+    if (file_exists($filename)) {
+      $tmp_file = drush_tempnam('drake_');
+      file_put_contents($tmp_file, file_get_contents($filename));
+    }
+    drush_log(dt('Wrote @file.', array('@file' => $filename)), 'status');
     file_put_contents($filename, $contents);
+    if (!empty($tmp_file)) {
+      drush_print(dt('Difference from previous:'));
+      drush_shell_exec_interactive('diff ' . $tmp_file . ' ' . $filename);
+    }
   }
   else {
     drush_print($contents);

@@ -3,9 +3,20 @@
 /**
  * @file
  * Drakefile for %site_name%. Requires drake_reload.
+ *
+ * Custom modifications should go at the end of the file to be retained by
+ * drake-rebuild-generate.
+ *
+ * You can override standard tasks by simply moving them below the marker line
+ * (search for "retained" to find it) and modifying them.
  */
 
 $api = 1;
+
+/*
+ * Drake Reload settings. This allows us to re-run drg.
+ */
+$drake_reload = array();
 
 $context = array(
 );
@@ -130,3 +141,5 @@ $tasks['sanitize-ding'] = array(
     ),
   ),
 );
+
+// ### Everything below this will be retained by drush-reload-generate ###
