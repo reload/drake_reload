@@ -122,6 +122,13 @@ $tasks['sanitize-nonding'] = array(
   ),
 );
 
+$tasks['redrake'] = array(
+  'action' => 'drush',
+  'help' => 'Regenerate the drakefile using drake-reload-generate',
+  'command' => 'drake-reload-generate',
+  'args' => array(__FILE__, 'y' => TRUE),
+);
+
 /*
  * Custom sanitation function. Invoked by our own import-db.
  */
