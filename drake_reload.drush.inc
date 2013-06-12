@@ -289,8 +289,12 @@ Finish by entering an empty alias.'),
   $new_chunks = array();
   foreach ($chunks as &$chunk) {
     // Save settings for re-running.
+    $dump = var_export($settings, TRUE);
+    // Clean up some var_export ugliness.
+    $dump = preg_replace('/array \(/', 'array(', $dump);
+    $dump = preg_replace('/=>\s+/', '=> ', $dump);
     if (preg_match('{\$drake_reload = }', $chunk)) {
-      $chunk = preg_replace('{\$drake_reload = array\(.*\);}', "\$drake_reload = " . var_export($settings, TRUE) . ";\n", trim($chunk));
+      $chunk = preg_replace('{\$drake_reload = array\(.*\);}', "\$drake_reload = " . $dump . ";\n", trim($chunk));
     }
 
     // Modify global context.
