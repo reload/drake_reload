@@ -41,7 +41,7 @@ $tasks['rebuild-make'] = array(
 
 $tasks['build-git'] = array(
   'depends' => array('reload-git-clone'),
-  'help' => 'Build site from nothing but a make file.',
+  'help' => 'Build site from a git repo.',
   'context' => array(
     'root' => drake_argument(1, 'Directory to build to.'),
     'repo' => context('repository'),
@@ -58,7 +58,7 @@ $tasks['rebuild-git'] = array(
 
 $tasks['build-ding'] = array(
   'depends' => array('reload-ding-build'),
-  'help' => 'Build site from nothing but a make file.',
+  'help' => 'Build site from a ding_deploy repo.',
   'context' => array(
     'root' => drake_argument(1, 'Directory to build to.'),
     'repo' => context('repository'),
