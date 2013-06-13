@@ -18,9 +18,15 @@ $api = 1;
  */
 $drake_reload = array();
 
+/*
+ * Global context.
+ */
 $context = array(
 );
 
+/*
+ * Build site using make.
+ */
 $tasks['build-make'] = array(
   'depends' => array('reload-situs', 'reload-flow-setup'),
   'help' => 'Build site from nothing but a make file.',
@@ -30,6 +36,9 @@ $tasks['build-make'] = array(
   ),
 );
 
+/*
+ * Rebuild site using make.
+ */
 $tasks['rebuild-make'] = array(
   'depends' => array('reload-situs', 'reload-flow-setup'),
   'help' => 'Rebuild the current site.',
@@ -39,6 +48,9 @@ $tasks['rebuild-make'] = array(
   ),
 );
 
+/*
+ * Build site from GIT.
+ */
 $tasks['build-git'] = array(
   'depends' => array('reload-git-clone'),
   'help' => 'Build site from a git repo.',
@@ -48,6 +60,9 @@ $tasks['build-git'] = array(
   ),
 );
 
+/*
+ * Relbuild site from GIT.
+ */
 $tasks['rebuild-git'] = array(
   'depends' => array('reload-git-pull'),
   'help' => 'Rebuild the current site.',
@@ -56,6 +71,9 @@ $tasks['rebuild-git'] = array(
   ),
 );
 
+/*
+ * Build site via ding_deploy.
+ */
 $tasks['build-ding'] = array(
   'depends' => array('reload-ding-build'),
   'help' => 'Build site from a ding_deploy repo.',
@@ -65,6 +83,9 @@ $tasks['build-ding'] = array(
   ),
 );
 
+/*
+ * Rebuild site via ding_deploy.
+ */
 $tasks['rebuild-ding'] = array(
   'depends' => array('reload-ding-rebuild'),
   'help' => 'Rebuild the current site.',
@@ -74,6 +95,9 @@ $tasks['rebuild-ding'] = array(
   ),
 );
 
+/*
+ * Import database from "%env_name%".
+ */
 $tasks['import-%env%'] = array(
   'depends' => array('reload-import-site'),
   'help' => 'Import database form "%env_name%".',
@@ -83,6 +107,9 @@ $tasks['import-%env%'] = array(
   ),
 );
 
+/*
+ * Import database from a file.
+ */
 $tasks['import-sql'] = array(
   'depends' => array('reload-import-file'),
   'help' => 'Import database form SQL dump.',
@@ -122,6 +149,9 @@ $tasks['sanitize-nonding'] = array(
   ),
 );
 
+/*
+ * Regenerate drakefile.
+ */
 $tasks['redrake'] = array(
   'action' => 'drush',
   'help' => 'Regenerate the drakefile using drake-reload-generate',
