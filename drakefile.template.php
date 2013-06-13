@@ -127,14 +127,14 @@ $tasks['import-sql'] = array(
  * depending on a reload helper task such as reload-sync-db or reload-import-db.
  */
 $tasks['import-db'] = array(
-  'depends' => array('reload-sync-db', 'sanitize'),
+  'depends' => array('reload-sync-db', 'reload-ding-fix-error-level', 'sanitize'),
 );
 
 /*
  * Load a database from a SQL dump.
  */
 $tasks['import-file'] = array(
-  'depends' => array('reload-load-db', 'sanitize'),
+  'depends' => array('reload-load-db', 'reload-ding-fix-error-level', 'sanitize'),
 );
 
 /*
@@ -150,16 +150,6 @@ $tasks['sanitize-nonding'] = array(
 );
 
 /*
- * Regenerate drakefile.
- */
-$tasks['redrake'] = array(
-  'action' => 'drush',
-  'help' => 'Regenerate the drakefile using drake-reload-generate',
-  'command' => 'drake-reload-generate',
-  'args' => array(__FILE__, 'y' => TRUE),
-);
-
-/*
  * Custom sanitation function. Invoked by our own import-db.
  */
 $tasks['sanitize-ding'] = array(
@@ -167,9 +157,10 @@ $tasks['sanitize-ding'] = array(
   'help' => 'Sanitizes database post-import.',
   'commands' => array(
     // Disable trampoline first thing, or else it'll kill everything later on.
+    // Same for memcache_admin.
     array(
       'command' => 'pm-disable',
-      'args' => array('trampoline', 'y' => TRUE),
+      'args' => array('trampoline', 'memcache_admin', 'y' => TRUE),
     ),
     // Set site name to "%site_name% [hostname]"
     array(
@@ -177,6 +168,16 @@ $tasks['sanitize-ding'] = array(
       'args' => array('site_name', '%site_name% ' . php_uname('n')),
     ),
   ),
+);
+
+/*
+ * Regenerate drakefile.
+ */
+$tasks['redrake'] = array(
+  'action' => 'drush',
+  'help' => 'Regenerate the drakefile using drake-reload-generate',
+  'command' => 'drake-reload-generate',
+  'args' => array(__FILE__, 'y' => TRUE),
 );
 
 // ### Everything below this will be retained by drush-reload-generate ###

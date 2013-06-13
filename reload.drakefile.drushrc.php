@@ -86,6 +86,15 @@ $tasks['reload-import-file'] = array(
 $tasks['enable-modules'] = array();
 
 /*
+ * Fixes error_level on ding-sites to avoid notices.
+ */
+$tasks['reload-ding-fix-error-level'] = array(
+  'action' => 'reload-ding-fix-error-level',
+  'help' => 'Fixes error_level in settings.php on ding-sites to avoid notices.',
+  'target' => context('@sync_target'),
+);
+
+/*
  * Sanitize database post-import.
  */
 $tasks['reload-sanitize'] = array(
@@ -362,7 +371,6 @@ function reload_ding_rebuild($context) {
     return drake_action_error(dt('Error deleting profile directory "@profile"', array('@profile' => $profile)));
   }
 
-
   // Run make with same args as ding_build.py would.
   $args = array($deploy . '/ding.make', $profile);
   $options = array(
@@ -391,5 +399,39 @@ function reload_ding_rebuild($context) {
   $command = 'cp ' . $deploy . '/drakefile.php ' . $context['root'] . '/sites/all/drush';
   if (!drush_shell_exec($command)) {
     return drake_action_error(dt('Error copying drakefile.'));
+  }
+}
+
+$actions['reload-ding-fix-error-level'] = array(
+  'callback' => 'reload_ding_fix_error_level',
+  'parameters' => array(
+    'target' => 'Alias of site to fix error level for.',
+  ),
+);
+
+function reload_ding_fix_error_level($context) {
+  $alias = $context['target'];
+  $site_record = drush_sitealias_get_record($alias);
+  $site_folder = drush_sitealias_local_site_path($site_record);
+  if (!file_exists($site_folder)) {
+    return drake_action_error(dt('Could not find site directory for @alias.', array('@alias' => $alias)));
+  }
+
+  $settings_file = $site_folder . '/settings.php';
+  if (!file_exists($settings_file)) {
+    return drake_action_error(dt('Could not find site settings.php in "@folder".', array('@folder' => $site_folder)));
+  }
+
+  $settings = file_get_contents($settings_file);
+  if (!preg_match('/error_reporting\(/', $settings)) {
+    drush_print(dt('No error_reporting setting found in settings.php, adding it.'));
+    $settings = trim($settings) . '
+
+// Drupal 6 is rather noisy on the notice front. We used to just silence
+// notices in php.ini, but that\'s considered bad practice these days, so
+// instead we set it for this site only.
+error_reporting(E_ALL ^ E_NOTICE ^ E_DEPRECATED);
+';
+    file_put_contents($settings_file, $settings);
   }
 }

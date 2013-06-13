@@ -369,6 +369,11 @@ Finish by entering an empty alias.'),
       $chunk = preg_replace("{, 'reload-flow-setup'}", '', $chunk);
     }
 
+    // Remove references to the error_level fixer, if not a ding site..
+    if ($settings['type'] != 'ding') {
+      $chunk = preg_replace("{, 'reload-ding-fix-error-level'}", '', $chunk);
+    }
+
     // Replace global replacements.
     $new_chunks[] = strtr($chunk, $global_replacements);
   }
