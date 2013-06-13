@@ -194,8 +194,8 @@ function reload_import_db($context) {
       break;
     case 'bz':
     case 'bz2':
-        $cat_command = 'bzcat';
-        break;
+      $cat_command = 'bzcat';
+      break;
     case 'sql':
     default:
       $cat_command = 'cat';
