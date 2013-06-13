@@ -335,13 +335,13 @@ Finish by entering an empty alias.'),
     }
 
     // Filter out sanitize tasks that's not needed.
-    if (preg_match('{\$tasks\[\'(sanitize)-(nonding|ding)\'\] = }', $chunk, $matches)) {
+    if (preg_match('{\$tasks\[\'(sanitize)-(nonding|ding)([^\']*)\'\] = }', $chunk, $matches)) {
       if (($matches[2] == 'nonding' && $settings['type'] == 'ding') ||
         ($matches[2] == 'ding' && $settings['type'] != 'ding')) {
         continue;
       }
       // Fix the task name.
-      $chunk = preg_replace('{\$tasks\[\'(sanitize)-(nonding|ding)\'\]}', '\$tasks[\'\1\']', $chunk);
+      $chunk = preg_replace('{\$tasks\[\'(sanitize)-(nonding|ding)([^\']*)\'\]}', '\$tasks[\'\1\3\']', $chunk);
     }
 
     // Clone import-prod to each env.

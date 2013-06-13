@@ -127,14 +127,14 @@ $tasks['import-sql'] = array(
  * depending on a reload helper task such as reload-sync-db or reload-import-db.
  */
 $tasks['import-db'] = array(
-  'depends' => array('reload-sync-db', 'reload-ding-fix-error-level', 'sanitize'),
+  'depends' => array('reload-sync-db', 'sanitize'),
 );
 
 /*
  * Load a database from a SQL dump.
  */
 $tasks['import-file'] = array(
-  'depends' => array('reload-load-db', 'reload-ding-fix-error-level', 'sanitize'),
+  'depends' => array('reload-load-db', 'sanitize'),
 );
 
 /*
@@ -153,8 +153,15 @@ $tasks['sanitize-nonding'] = array(
  * Custom sanitation function. Invoked by our own import-db.
  */
 $tasks['sanitize-ding'] = array(
-  'action' => 'drush',
+  'depends' => array('reload-ding-fix-error-level', 'sanitize-drush'),
   'help' => 'Sanitizes database post-import.',
+);
+
+/*
+ * Runs misc sanitation drush commands.
+ */
+$tasks['sanitize-ding-drush'] = array(
+  'action' => 'drush',
   'commands' => array(
     // Disable trampoline first thing, or else it'll kill everything later on.
     // Same for memcache_admin.
