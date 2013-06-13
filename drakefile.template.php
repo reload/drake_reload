@@ -167,7 +167,7 @@ $tasks['sanitize-ding-drush'] = array(
     // Same for memcache_admin.
     array(
       'command' => 'pm-disable',
-      'args' => array('trampoline', 'memcache_admin', 'y' => TRUE),
+      'args' => array('trampoline', 'memcache_admin', 'securepages', 'y' => TRUE),
     ),
     // Set site name to "%site_name% [hostname]"
     array(
