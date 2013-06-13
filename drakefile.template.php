@@ -153,7 +153,7 @@ $tasks['sanitize-nonding'] = array(
  * Custom sanitation function. Invoked by our own import-db.
  */
 $tasks['sanitize-ding'] = array(
-  'depends' => array('reload-ding-fix-error-level', 'sanitize-drush'),
+  'depends' => array('reload-ding-fix-error-level', 'sanitize-drush', 'reload-fix-mobile-tools'),
   'help' => 'Sanitizes database post-import.',
 );
 

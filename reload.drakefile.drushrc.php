@@ -95,6 +95,15 @@ $tasks['reload-ding-fix-error-level'] = array(
 );
 
 /*
+ * Fixes mobile tools settings to point to local site.
+ */
+$tasks['reload-fix-mobile-tools'] = array(
+  'action' => 'reload-fix-mobile-tools',
+  'help' => 'Fixes mobile tools to point to local site.',
+  'target' => context('@sync_target'),
+);
+
+/*
  * Sanitize database post-import.
  */
 $tasks['reload-sanitize'] = array(
@@ -433,5 +442,47 @@ function reload_ding_fix_error_level($context) {
 error_reporting(E_ALL ^ E_NOTICE ^ E_DEPRECATED);
 ';
     file_put_contents($settings_file, $settings);
+  }
+}
+
+$actions['reload-fix-mobile-tools'] = array(
+  'callback' => 'reload_fix_mobile_tools',
+  'parameters' => array(
+    'target' => 'Alias of site to fix mobile_tools on.',
+  ),
+);
+
+function reload_fix_mobile_tools($context) {
+  $alias = $context['target'];
+  $args = array(
+    'mobile_tools_desktop_url',
+  );
+  $res = drush_invoke_process($alias, 'vget', $args, array(), TRUE);
+  if (!isset($res['object']['mobile_tools_desktop_url'])) {
+    // Variable not set, we assume that mobile_tools are not enabled.
+    drush_print(dt('mobile_tools_desktop_url variable not set, assuming mobile_tools is disabled.'));
+    return;
+  }
+
+  $site_record = drush_sitealias_get_record($alias);
+
+  if (!empty($site_record['uri'])) {
+    $url = $site_record['uri'];
+
+    if (preg_match('{^(https?://)(.*)$}', $url, $matches)) {
+      $mobile_url = $matches[1] . 'm.' . $matches[2];
+
+      $args = array('mobile_tools_desktop_url', $url);
+      $res = drush_invoke_process($alias, 'vset', $args, array(), TRUE);
+
+      $args = array('mobile_tools_mobile_url', $mobile_url);
+      $res = drush_invoke_process($alias, 'vset', $args, array(), TRUE);
+    }
+    else {
+      return drake_action_error(dt('Malformed URL "@url" for @alias.', array('@alias' => $alias, '@url' => $url)));
+    }
+  }
+  else {
+    return drake_action_error(dt('Could not find local site url for @alias.', array('@alias' => $alias)));
   }
 }
