@@ -382,8 +382,13 @@ function reload_ding_rebuild($context) {
     return drake_action_error(dt('Error copying ding.profile.'));
   }
 
-  // Copy the drakefile into the profile folder.
-  $command = 'cp ' . $deploy . '/drakefile.php ' . $context['root'] . '/profiles/ding';
+  // Copy the drakefile into the site/all/drush folder.
+  // Create the dir.
+  $command = 'mkdir -p ' . $context['root'] . '/sites/all/drush';
+  if (!drush_shell_exec($command)) {
+    return drake_action_error(dt('Error creating sites/all/drush.'));
+  }
+  $command = 'cp ' . $deploy . '/drakefile.php ' . $context['root'] . '/sites/all/drush';
   if (!drush_shell_exec($command)) {
     return drake_action_error(dt('Error copying drakefile.'));
   }
