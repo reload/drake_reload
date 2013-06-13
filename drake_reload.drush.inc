@@ -381,7 +381,7 @@ Finish by entering an empty alias.'),
   $contents = implode("\n\n", $new_chunks) . "\n" . $additions;
   if ($filename) {
     if (file_exists($filename)) {
-      $tmp_file = drush_tempnam('drake_');
+      $tmp_file = drush_tempnam('drake_reload_');
       file_put_contents($tmp_file, file_get_contents($filename));
     }
     drush_log(dt('Wrote @file.', array('@file' => $filename)), 'status');
