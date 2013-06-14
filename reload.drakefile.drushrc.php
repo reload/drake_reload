@@ -335,7 +335,6 @@ function reload_ding_build($context) {
   // Temporary directory for ding_deploy checkout.
   $deploy = drush_tempdir('ding_deploy_') . '/ding-deploy';
   $command = 'git 2>&1 clone ' . $context['repository'] . ' ' . $deploy;
-  drush_print($command);
   if (!drush_shell_exec($command)) {
     foreach (drush_shell_exec_output() as $line) {
       drush_log('git: ' . $line, 'error');
