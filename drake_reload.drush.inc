@@ -40,6 +40,12 @@ function drake_reload_drush_command() {
     'bootstrap' => DRUSH_BOOTSTRAP_DRUSH,
   );
 
+  $items['drake-reload-sites'] = array(
+    'description' => 'Show list of mole_zero known sites.',
+    'aliases' => array('drs'),
+    'bootstrap' => DRUSH_BOOTSTRAP_DRUSH,
+  );
+
   return $items;
 }
 
@@ -73,6 +79,8 @@ Example:
 Preferably in mole_zero (ask someone if you have no clue what that means).
 
 ");
+    case 'drush:drake-reload-sites':
+      return dt("Show list of mole_zero known sites.");
   }
 }
 
@@ -483,4 +491,23 @@ function drush_drake_reload_bootstrap($alias = NULL, $path = NULL) {
     drush_print(trim($message));
   }
   drush_print('Done.');
+}
+
+function drush_drake_reload_sites($alias = NULL, $path = NULL) {
+  // You'd think it would be much easier to just ask Drush for a list of all
+  // aliases. You'd be wrong.
+  $per_user_config_dir = drush_get_context('DRUSH_PER_USER_CONFIGURATION');
+  if (!empty($per_user_config_dir)) {
+    if (!file_exists($per_user_config_dir . '/r.aliases.drushrc.php')) {
+      return drush_set_error(dt('mole_zero not detected. Please run drush-reload-install to install it.'));
+    }
+    $aliasname = 'r.shangri-la';
+    include($per_user_config_dir . '/r.aliases.drushrc.php');
+    foreach ($aliases as $name => $def) {
+      drush_print('@r.' . $name);
+    }
+  }
+  else {
+    return drush_set_error(dt("I'm loosing my mind, I can't figure out where the .drush directory is?"));
+  }
 }
