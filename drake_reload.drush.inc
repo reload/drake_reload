@@ -190,7 +190,7 @@ function drush_drake_reload_generate($filename = NULL) {
           foreach ($custom_tasks as $task) {
             $custom_tasks_regexp[] = preg_quote($task, '/');
           }
-          $custom_tasks_regexp = '(' . join('|', $custom_tasks_regexp) . ')';
+          $custom_tasks_regexp = '(' . implode('|', $custom_tasks_regexp) . ')';
       }
     }
   }
@@ -198,6 +198,15 @@ function drush_drake_reload_generate($filename = NULL) {
 
   $previous_settings = drake_reload_load_settings($filename);
   $questions = array(
+    'core' => array(
+      'type' => 'option',
+      'required' => TRUE,
+      'prompt' => dt('Drupal version?'),
+      'options' => array(
+        '6.x' => 'Drupal 6',
+        '7.x' => 'Drupal 7',
+      ),
+    ),
     'site_name' => array(
       'type' => 'string',
       'required' => TRUE,
@@ -279,6 +288,7 @@ Finish by entering an empty alias.'),
   if (!$settings) {
     return FALSE;
   }
+  $global_replacements['%core%'] = $settings['core'];
   $global_replacements['%site_name%'] = $settings['site_name'];
   $global_replacements['%flow_path%'] = $settings['flow_path'];
   $global_replacements['%make_file_url%'] = $settings['make_file_url'];
@@ -300,6 +310,8 @@ Finish by entering an empty alias.'),
     // Modify global context.
     if (preg_match('{\$context = }', $chunk)) {
       $context = array();
+      $context[] = '  // Drupal core version.';
+      $context[] = "  'core' => '%core%',";
       // Add envs to $context.
       foreach ($settings['envs'] as $env_name => $env) {
         $context[] = '  // ' . $env['name'] . ' site alias.';

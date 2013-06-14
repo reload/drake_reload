@@ -67,7 +67,7 @@ $tasks['reload-flow-setup'] = array(
  */
 $tasks['reload-import-site'] = array(
   // The import-db task is expected to be defined in the site drakefile.
-  'depends' => array('reload-drop-db', 'import-db', 'reload-sanitize', 'reload-updb', 'enable-modules', 'reload-cc-all'),
+  'depends' => array('reload-drop-db', 'import-db', context('reload-sanitize-[core]'), 'reload-updb', 'enable-modules', 'reload-cc-all'),
 );
 
 /*
@@ -75,7 +75,7 @@ $tasks['reload-import-site'] = array(
  */
 $tasks['reload-import-file'] = array(
   // The import-file task is expected to be defined in the site drakefile.
-  'depends' => array('reload-drop-db', 'import-file', 'reload-sanitize', 'reload-updb', 'enable-modules', 'reload-cc-all'),
+  'depends' => array('reload-drop-db', 'import-file', context('reload-sanitize-[core]'), 'reload-updb', 'enable-modules', 'reload-cc-all'),
 );
 
 /*
@@ -104,9 +104,9 @@ $tasks['reload-fix-mobile-tools'] = array(
 );
 
 /*
- * Sanitize database post-import.
+ * Sanitize database post-import, Drupal 7.
  */
-$tasks['reload-sanitize'] = array(
+$tasks['reload-sanitize-7.x'] = array(
   'action' => 'drush',
   'help' => 'Sanitizes database post-import (common).',
   'commands' => array(
@@ -126,6 +126,31 @@ $tasks['reload-sanitize'] = array(
     array(
       'command' => 'vset',
       'args' => array('file_temporary_path', '/tmp'),
+    ),
+    // Logging level.
+    array('command' => 'vset', 'args' => array('error_level', '2')),
+  ),
+);
+
+/*
+ * Sanitize database post-import, Drupal 6.
+ */
+$tasks['reload-sanitize-6.x'] = array(
+  'action' => 'drush',
+  'help' => 'Sanitizes database post-import (common).',
+  'commands' => array(
+    // Disable aggregation and cache.
+    array('command' => 'vset', 'args' => array('preprocess_js', '0')),
+    array('command' => 'vset', 'args' => array('preprocess_css', '0')),
+    array('command' => 'vset', 'args' => array('cache', '0')),
+    // Set file paths.
+    array(
+      'command' => 'vset',
+      'args' => array('file_directory_path', context('[@sync_target:site:path]/files')),
+    ),
+    array(
+      'command' => 'vset',
+      'args' => array('file_directory_temp', '/tmp'),
     ),
     // Logging level.
     array('command' => 'vset', 'args' => array('error_level', '2')),
