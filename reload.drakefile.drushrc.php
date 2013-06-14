@@ -262,9 +262,8 @@ function reload_import_db($context) {
       return drake_action_error(dt('Database import failed.'));
     }
     else {
-      drush_print('eh');
+      drush_log(dt('Database imported.'), 'ok');
     }
-    drush_log(dt('Database imported.'), 'ok');
   }
   else {
     return drake_action_error(dt('Could not get database credentials. (try sql-connect yourself)'));
