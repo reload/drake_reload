@@ -503,11 +503,39 @@ function drush_drake_reload_sites($alias = NULL, $path = NULL) {
     }
     $aliasname = 'r.shangri-la';
     include($per_user_config_dir . '/r.aliases.drushrc.php');
+    $sorted = array();
     foreach ($aliases as $name => $def) {
-      drush_print('@r.' . $name);
+      $key = empty($def['parent']) ? '' : $def['parent'];
+      $sorted[$key][$name] = $def;
+    }
+
+    drake_reload_print_r('', $sorted);
+    if (!empty($sorted)) {
+      foreach ($sorted as $parent => $list) {
+        foreach ($list as $name => $def) {
+          drush_log(dt('Unknown parent @parent for @alias', array('@parent' => $parent, '@alias' => $name)), 'error');
+        }
+      }
     }
   }
   else {
     return drush_set_error(dt("I'm loosing my mind, I can't figure out where the .drush directory is?"));
+  }
+}
+
+function drake_reload_print_r($name, &$all, $prefix = '') {
+  foreach ($all[$name] as $key_name => $def) {
+    $alias_name = '@r.' . $key_name;
+    $suffix = '';
+    if (!empty($def['drake_reload']['title'])) {
+      $suffix = ' - ' . $def['drake_reload']['title'];
+    }
+    drush_print($prefix . $alias_name . $suffix);
+    if (!empty($all[$alias_name])) {
+      drush_print();
+      drake_reload_print_r($alias_name, $all, $prefix . '  ');
+      drush_print();
+    }
+    unset($all[$name]);
   }
 }
