@@ -15,9 +15,6 @@ function drake_reload_drush_command() {
     'arguments' => array(
       'filename' => 'File to write to (optional).',
     ),
-    // 'options' => array(
-    //   'file' => 'Use specified file.',
-    // ),
     'aliases' => array('drg'),
     'bootstrap' => DRUSH_BOOTSTRAP_DRUSH,
   );
@@ -33,9 +30,6 @@ function drake_reload_drush_command() {
       'alias' => 'Alias for site to bootstrap.',
       'path' => 'The path to build to.',
     ),
-    // 'options' => array(
-    //   'file' => 'Use specified file.',
-    // ),
     'aliases' => array('drb'),
     'bootstrap' => DRUSH_BOOTSTRAP_DRUSH,
   );
@@ -62,12 +56,16 @@ function drake_reload_drush_help($section) {
   switch ($section) {
     case 'meta:drake_reload:title':
       return dt('Drake Reload');
+
     case 'meta:drake_reload:summary':
       return dt('Generate Drake Reload based drakefiles.');
+
     case 'drush:drake-reload-generate':
       return dt("Generate drakefile.");
+
     case 'drush:drake-reload-install':
       return dt("Install all parts for drake_reload.");
+
     case 'drush:drake-reload-bootstrap':
       return dt("Run Drake build for a site alias.
 
@@ -85,8 +83,10 @@ Example:
 Preferably in mole_zero (ask someone if you have no clue what that means).
 
 ");
+
     case 'drush:drake-reload-sites':
       return dt("Show list of mole_zero known sites.");
+
     case 'drush:drake-reload-mobile-tools-workaround':
       return dt("Disable redirection mobile_tools if it is in a version know no be incompatible with drush.
 
@@ -116,29 +116,33 @@ function drake_reload_run_questions($questions, $settings) {
         }
       }
     }
-    if (!empty($question['description'])){
+    if (!empty($question['description'])) {
       drush_print($question['description']);
     }
     switch ($question['type']) {
       case 'string':
         $new_settings[$key] = trim(drush_prompt($question['prompt'], $default, $question['required']));
         break;
+
       case 'option':
         $new_settings[$key] = drush_choice($question['options'], $question['prompt'] . ($rebuilding ? '[' . $default . ']' : ''));
         if ($rebuilding) {
-          if (!$new_settings[$key] ||  drush_get_context('DRUSH_AFFIRMATIVE'))
-          $new_settings[$key] = $default;
+          if (!$new_settings[$key] || drush_get_context('DRUSH_AFFIRMATIVE')) {
+            $new_settings[$key] = $default;
+          }
         }
         if (!$new_settings[$key]) {
           return drush_user_abort();
         }
         break;
+
       case 'bool':
         if ($rebuilding && drush_get_context('DRUSH_AFFIRMATIVE')) {
           $new_settings[$key] = $default;
         }
         $new_settings[$key] = drush_confirm($question['prompt']);
         break;
+
       case 'envs':
         if ($rebuilding && drush_get_context('DRUSH_AFFIRMATIVE')) {
           $new_settings[$key] = $default;
@@ -146,7 +150,11 @@ function drake_reload_run_questions($questions, $settings) {
         $env_default = array();
         if (!empty($settings[$key])) {
           foreach ($settings[$key] as $env_name => $env) {
-            $env_default[] = join(',', array($env_name, $env['alias'], $env['name']));
+            $env_default[] = implode(',', array(
+                               $env_name,
+                               $env['alias'],
+                               $env['name'],
+                             ));
           }
         }
         do {
@@ -177,6 +185,7 @@ function drake_reload_run_questions($questions, $settings) {
         } while (!empty($env));
         $new_settings['envs'] = $envs;
         break;
+
       default:
         return drush_set_error('BAD_QUESTION', dt('Unknown question type @type.', array('@type' => $question['type'])));
     }
@@ -223,9 +232,9 @@ function drush_drake_reload_generate($filename = NULL) {
             $custom_tasks_regexp[] = preg_quote($task, '/');
           }
           $custom_tasks_regexp = '(' . implode('|', $custom_tasks_regexp) . ')';
+        }
       }
     }
-  }
   }
 
   $previous_settings = drake_reload_load_settings($filename);
@@ -324,7 +333,7 @@ Finish by entering an empty alias.'),
   $global_replacements['%site_name%'] = $settings['site_name'];
   $global_replacements['%flow_path%'] = $settings['flow_path'];
   $global_replacements['%make_file_url%'] = $settings['make_file_url'];
-  $global_replacements['%make_file_path%'] = empty($settings['make_file_path']) ? "makefile"  : "[@self:site:root]/" . $settings['make_file_path'];
+  $global_replacements['%make_file_path%'] = empty($settings['make_file_path']) ? "makefile" : "[@self:site:root]/" . $settings['make_file_path'];
   $global_replacements['%git_url%'] = $settings['git_url'];
   $global_replacements['%ding_url%'] = $settings['ding_url'];
 
@@ -347,7 +356,7 @@ Finish by entering an empty alias.'),
       // Add envs to $context.
       foreach ($settings['envs'] as $env_name => $env) {
         $context[] = '  // ' . $env['name'] . ' site alias.';
-        $context[] = "  '@env." . $env_name. "' => '" . $env['alias'] . "',";
+        $context[] = "  '@env." . $env_name . "' => '" . $env['alias'] . "',";
       }
 
       if ($settings['type'] == 'make') {
@@ -464,7 +473,7 @@ function drush_drake_reload_install() {
       $errors = file_get_contents($err_file);
       if (!$res) {
         drush_print('Error fetching r.aliases.drushrc.php, scp output:');
-        drush_print(join("\n", drush_shell_exec_output()));
+        drush_print(implode("\n", drush_shell_exec_output()));
         return drush_set_error('MOLE_ZERO_SETUP_ERROR', dt('Error setting up mole_zero.'));
       }
     }
@@ -517,7 +526,7 @@ function drush_drake_reload_bootstrap($alias = NULL, $path = NULL) {
   if (!empty($site_record['drake_reload']['bootstrap_message'])) {
     $message = $site_record['drake_reload']['bootstrap_message'];
     if (is_array($message)) {
-      $message = join("\n", $message);
+      $message = implode("\n", $message);
     }
     drush_print("There's a message attached to the alias:");
     drush_print();
@@ -538,7 +547,7 @@ function drush_drake_reload_sites($alias = NULL, $path = NULL) {
       return drush_set_error(dt('mole_zero not detected. Please run drush-reload-install to install it.'));
     }
     $aliasname = 'r.shangri-la';
-    include($per_user_config_dir . '/r.aliases.drushrc.php');
+    include $per_user_config_dir . '/r.aliases.drushrc.php';
     $sorted = array();
     foreach ($aliases as $name => $def) {
       $key = empty($def['parent']) ? '' : $def['parent'];

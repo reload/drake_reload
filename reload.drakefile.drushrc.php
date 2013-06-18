@@ -1,5 +1,10 @@
 <?php
 
+/**
+ * @file
+ * Common drake task for Reload.
+ */
+
 $api = 1;
 
 /*
@@ -67,7 +72,14 @@ $tasks['reload-flow-setup'] = array(
  */
 $tasks['reload-import-site'] = array(
   // The import-db task is expected to be defined in the site drakefile.
-  'depends' => array('reload-drop-db', 'import-db', context('reload-sanitize-[core]'), 'reload-updb', 'enable-modules', 'reload-cc-all'),
+  'depends' => array(
+    'reload-drop-db',
+    'import-db',
+    context('reload-sanitize-[core]'),
+    'reload-updb',
+    'enable-modules',
+    'reload-cc-all',
+  ),
 );
 
 /*
@@ -75,7 +87,14 @@ $tasks['reload-import-site'] = array(
  */
 $tasks['reload-import-file'] = array(
   // The import-file task is expected to be defined in the site drakefile.
-  'depends' => array('reload-drop-db', 'import-file', context('reload-sanitize-[core]'), 'reload-updb', 'enable-modules', 'reload-cc-all'),
+  'depends' => array(
+    'reload-drop-db',
+    'import-file',
+    context('reload-sanitize-[core]'),
+    'reload-updb',
+    'enable-modules',
+    'reload-cc-all',
+  ),
 );
 
 /*
@@ -233,6 +252,11 @@ $actions['reload-import-db'] = array(
   ),
 );
 
+/**
+ * Import a SQL file.
+ *
+ * Will attempt to decompress common complession types.
+ */
 function reload_import_db($context) {
   $file = realpath($context['file']);
   if (!file_exists($file)) {
@@ -244,10 +268,12 @@ function reload_import_db($context) {
     case 'gz':
       $cat_command = 'zcat';
       break;
+
     case 'bz':
     case 'bz2':
       $cat_command = 'bzcat';
       break;
+
     case 'sql':
     default:
       $cat_command = 'cat';
@@ -290,6 +316,9 @@ $actions['reload-git-flow-setup'] = array(
   ),
 );
 
+/**
+ * Setup git flow in a repository.
+ */
 function reload_git_flow_setup($context) {
   $prefix = $context['prefix'];
   $config = <<<EOF
@@ -331,6 +360,11 @@ $actions['reload-ding-build'] = array(
   ),
 );
 
+/**
+ * Build a ding site.
+ *
+ * Clones ding-deploy, runs make and copies ding.profile and drakefile.php in.
+ */
 function reload_ding_build($context) {
   // Initial sanity checks.
   if (file_exists($context['root'])) {
@@ -385,6 +419,12 @@ $actions['reload-ding-rebuild'] = array(
   ),
 );
 
+/**
+ * Rebuild a ding site.
+ *
+ * Basically the same as reload_ding_build, but only overwriting the profile
+ * dir.
+ */
 function reload_ding_rebuild($context) {
   // Initial sanity checks.
   $profile = $context['root'] . '/profiles/ding';
@@ -450,6 +490,11 @@ $actions['reload-ding-fix-error-level'] = array(
   ),
 );
 
+/**
+ * Modifies the site settings.php to suppress warnings.
+ *
+ * Only needed for Drupal 6 sites.
+ */
 function reload_ding_fix_error_level($context) {
   $alias = $context['target'];
   $site_record = drush_sitealias_get_record($alias);
@@ -484,6 +529,9 @@ $actions['reload-fix-mobile-tools'] = array(
   ),
 );
 
+/**
+ * Fixes the URLs of mobile_tools to point to the local installation.
+ */
 function reload_fix_mobile_tools($context) {
   $alias = $context['target'];
   $args = array(
