@@ -144,6 +144,7 @@ function drake_reload_run_questions($questions, $settings) {
         break;
 
       case 'envs':
+        $envs = array();
         if ($rebuilding && drush_get_context('DRUSH_AFFIRMATIVE')) {
           $new_settings[$key] = $default;
         }
