@@ -21,8 +21,7 @@ $drake_reload = array();
 /*
  * Global context.
  */
-$context = array(
-);
+$context = array();
 
 /*
  * Build site using make.
@@ -145,7 +144,10 @@ $tasks['sanitize-nonding'] = array(
   'help' => 'Sanitizes database post-import.',
   'commands' => array(
     // Set site name to "%site_name% [hostname]"
-    array('command' => 'vset', 'args' => array('site_name', '%site_name% ' . php_uname('n'))),
+    array(
+      'command' => 'vset',
+      'args' => array('site_name', '%site_name% ' . php_uname('n')),
+    ),
   ),
 );
 
@@ -153,7 +155,12 @@ $tasks['sanitize-nonding'] = array(
  * Custom sanitation function. Invoked by our own import-db.
  */
 $tasks['sanitize-ding'] = array(
-  'depends' => array('reload-disable-old-mobile-tools', 'reload-ding-fix-error-level', 'sanitize-drush', 'reload-fix-mobile-tools'),
+  'depends' => array(
+    'reload-disable-old-mobile-tools',
+    'reload-ding-fix-error-level',
+    'sanitize-drush',
+    'reload-fix-mobile-tools',
+  ),
   'help' => 'Sanitizes database post-import.',
 );
 
@@ -167,7 +174,12 @@ $tasks['sanitize-ding-drush'] = array(
     // Same for memcache_admin.
     array(
       'command' => 'pm-disable',
-      'args' => array('trampoline', 'memcache_admin', 'securepages', 'y' => TRUE),
+      'args' => array(
+        'trampoline',
+        'memcache_admin',
+        'securepages',
+        'y' => TRUE,
+      ),
     ),
     // Set site name to "%site_name% [hostname]"
     array(

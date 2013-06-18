@@ -375,7 +375,7 @@ Finish by entering an empty alias.'),
         $context[] = '  // Git Flow path.';
         $context[] = "  'git-root' => context('[root]/%flow_path%'),";
       }
-      $chunk = preg_replace('{\$context = array\(\n}', "\$context = array(\n" . implode("\n", $context) . "\n", $chunk);
+      $chunk = preg_replace('{\$context = array\(\);}', "\$context = array(\n" . implode("\n", $context) . "\n);", $chunk);
     }
 
     // Filter out build tasks that's not needed.
