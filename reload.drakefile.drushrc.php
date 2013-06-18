@@ -109,7 +109,6 @@ $tasks['enable-modules'] = array();
  */
 $tasks['reload-ding-fix-error-level'] = array(
   'action' => 'reload-ding-fix-error-level',
-  'help' => 'Fixes error_level in settings.php on ding-sites to avoid notices.',
   'target' => context('@sync_target'),
 );
 
@@ -127,7 +126,6 @@ $tasks['reload-disable-old-mobile-tools'] = array(
  */
 $tasks['reload-fix-mobile-tools'] = array(
   'action' => 'reload-fix-mobile-tools',
-  'help' => 'Fixes mobile tools to point to local site.',
   'target' => context('@sync_target'),
 );
 
@@ -136,7 +134,7 @@ $tasks['reload-fix-mobile-tools'] = array(
  */
 $tasks['reload-sanitize-7.x'] = array(
   'action' => 'drush',
-  'help' => 'Sanitizes database post-import (common).',
+  'help' => 'Sanitizes database post-import (7.x common).',
   'commands' => array(
     // Disable aggregation and cache.
     array('command' => 'vset', 'args' => array('preprocess_js', '0')),
@@ -165,7 +163,7 @@ $tasks['reload-sanitize-7.x'] = array(
  */
 $tasks['reload-sanitize-6.x'] = array(
   'action' => 'drush',
-  'help' => 'Sanitizes database post-import (common).',
+  'help' => 'Sanitizes database post-import (6.x common).',
   'commands' => array(
     // Disable aggregation and cache.
     array('command' => 'vset', 'args' => array('preprocess_js', '0')),
