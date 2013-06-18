@@ -84,6 +84,13 @@ Preferably in mole_zero (ask someone if you have no clue what that means).
   }
 }
 
+/**
+ * Ask user some questions.
+ *
+ * Given an array of questions and optional default values, gets the answers
+ * from the user, taking care of dependencies, affirmative mode and other
+ * details.
+ */
 function drake_reload_run_questions($questions, $settings) {
   $new_settings = array();
   $rebuilding = !empty($settings);
@@ -166,6 +173,9 @@ function drake_reload_run_questions($questions, $settings) {
   return $new_settings;
 }
 
+/**
+ * Load the question answers from an existing file.
+ */
 function drake_reload_load_settings($filename) {
   if (file_exists($filename)) {
     include $filename;
@@ -176,6 +186,9 @@ function drake_reload_load_settings($filename) {
   return array();
 }
 
+/**
+ * Command callback; generate a drakefile by asking questions.
+ */
 function drush_drake_reload_generate($filename = NULL) {
   $template = file_get_contents(dirname(__FILE__) . '/drakefile.template.php');
   $chunks = explode("\n\n", $template);
@@ -416,6 +429,9 @@ Finish by entering an empty alias.'),
   }
 }
 
+/**
+ * Command callback; install dependencies.
+ */
 function drush_drake_reload_install() {
   $res = drush_invoke_process('@self', 'pm-download', array('drush_situs'), array('no' => TRUE), TRUE);
   $res = drush_invoke_process('@self', 'pm-download', array('drush_drake'), array('no' => TRUE), TRUE);
@@ -444,6 +460,9 @@ function drush_drake_reload_install() {
   }
 }
 
+/**
+ * Command callback validator; checks arguments for the boostrap command.
+ */
 function drush_drake_reload_bootstrap_validate($alias = NULL, $path = NULL) {
   if (empty($alias)) {
     return drush_set_error('NO_ALIAS', dt('No alias? What am I supposed to do?'));
@@ -471,6 +490,9 @@ function drush_drake_reload_bootstrap_validate($alias = NULL, $path = NULL) {
   }
 }
 
+/**
+ * Command callback; bootstrap a site from an alias.
+ */
 function drush_drake_reload_bootstrap($alias = NULL, $path = NULL) {
   $site_record = drush_get_context('DRAKE_RELOAD_SITEALIAS', NULL);
 
@@ -493,6 +515,9 @@ function drush_drake_reload_bootstrap($alias = NULL, $path = NULL) {
   drush_print('Done.');
 }
 
+/**
+ * Command callback; list sites known to mole_zero.
+ */
 function drush_drake_reload_sites($alias = NULL, $path = NULL) {
   // You'd think it would be much easier to just ask Drush for a list of all
   // aliases. You'd be wrong.
@@ -509,7 +534,7 @@ function drush_drake_reload_sites($alias = NULL, $path = NULL) {
       $sorted[$key][$name] = $def;
     }
 
-    drake_reload_print_r('', $sorted);
+    _drake_reload_print_sites('', $sorted);
     if (!empty($sorted)) {
       foreach ($sorted as $parent => $list) {
         foreach ($list as $name => $def) {
@@ -523,7 +548,10 @@ function drush_drake_reload_sites($alias = NULL, $path = NULL) {
   }
 }
 
-function drake_reload_print_r($name, &$all, $prefix = '') {
+/**
+ * Print an array of sites, ordered by parent-child.
+ */
+function _drake_reload_print_sites($name, &$all, $prefix = '') {
   foreach ($all[$name] as $key_name => $def) {
     $alias_name = '@r.' . $key_name;
     $suffix = '';
@@ -533,7 +561,7 @@ function drake_reload_print_r($name, &$all, $prefix = '') {
     drush_print($prefix . $alias_name . $suffix);
     if (!empty($all[$alias_name])) {
       drush_print();
-      drake_reload_print_r($alias_name, $all, $prefix . '  ');
+      _drake_reload_print_sites($alias_name, $all, $prefix . '  ');
       drush_print();
     }
     unset($all[$name]);
