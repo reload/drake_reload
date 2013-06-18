@@ -95,6 +95,15 @@ $tasks['reload-ding-fix-error-level'] = array(
 );
 
 /*
+ * Kills old versions of mobile tools incompatible with drush.
+ */
+$tasks['reload-disable-old-mobile-tools'] = array(
+  'action' => 'drush',
+  'target' => context('@sync_target'),
+  'command' => 'drake-reload-mobile-tools-workaround',
+);
+
+/*
  * Fixes mobile tools settings to point to local site.
  */
 $tasks['reload-fix-mobile-tools'] = array(

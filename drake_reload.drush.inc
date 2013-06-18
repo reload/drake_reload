@@ -46,6 +46,12 @@ function drake_reload_drush_command() {
     'bootstrap' => DRUSH_BOOTSTRAP_DRUSH,
   );
 
+  $items['drake-reload-mobile-tools-workaround'] = array(
+    'description' => 'Disable mobile_tools redirection if it is in a version know no be incompatible with drush.',
+    'aliases' => array('drmtw'),
+    'bootstrap' => DRUSH_BOOTSTRAP_DRUPAL_DATABASE,
+  );
+
   return $items;
 }
 
@@ -81,6 +87,11 @@ Preferably in mole_zero (ask someone if you have no clue what that means).
 ");
     case 'drush:drake-reload-sites':
       return dt("Show list of mole_zero known sites.");
+    case 'drush:drake-reload-mobile-tools-workaround':
+      return dt("Disable redirection mobile_tools if it is in a version know no be incompatible with drush.
+
+This is not foolproof, as Features could possibly revert the variable, but you
+can re-run this command to set it back.");
   }
 }
 
@@ -565,5 +576,31 @@ function _drake_reload_print_sites($name, &$all, $prefix = '') {
       drush_print();
     }
     unset($all[$name]);
+  }
+}
+
+/**
+ * Command callback; avoid having mobile_tools kill all drush commands.
+ */
+function drush_drake_reload_mobile_tools_workaround() {
+  $select = drush_db_select('system', array('info'), "name = 'mobile_tools' AND status = 1", array());
+
+  while ($row = drush_db_fetch_object($select)) {
+    if ($info = unserialize($row->info)) {
+      if (preg_match('/^([67]).x-(\d+)\.(\d+)$/', $info['version'], $m)) {
+        // If version < 2.4.
+        if ($m[1] == 6 && ($m[2] < 2 || ($m[2] == 2 && $m[3] < 4))) {
+          drush_print();
+          drush_print(dt('WARNING'));
+          drush_print();
+          drush_print(dt('Disabling redirection in mobile_tools (version @ver) because releases before 2.4 has been known to cause all drush commands to fail when attempting to redirect.', array('@ver' => $m[2] . '.' . $m[3])));
+          drush_print();
+          drush_print(dt('If your drush commands starts to mysteriously fail at some point, try re-running drush drmtw to reset this variable. Features might revernt the variable.'));
+          drush_print();
+
+          variable_set('mobile_tools_redirect', FALSE);
+        }
+      }
+    }
   }
 }
