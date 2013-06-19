@@ -51,7 +51,7 @@ $tasks['rebuild-make'] = array(
  * Build site from GIT.
  */
 $tasks['build-git'] = array(
-  'depends' => array('reload-git-clone'),
+  'depends' => array('reload-git-clone', 'reload-flow-setup'),
   'help' => 'Build site from a git repo.',
   'context' => array(
     'root' => drake_argument(1, 'Directory to build to.'),

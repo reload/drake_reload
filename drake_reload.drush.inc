@@ -110,9 +110,19 @@ function drake_reload_run_questions($questions, $settings) {
     // Check question dependencies.
     if (!empty($question['depends'])) {
       foreach ($question['depends'] as $field => $value) {
-        if ($new_settings[$field] != $value) {
-          // Skip question.
-          continue 2;
+        if (is_array($value)) {
+          // If the dependency is an array, use in_array.
+          if (!in_array($new_settings[$field], $value)) {
+            // Skip question.
+            continue 2;
+          }
+        }
+        else {
+          // If dependency is not an array, simply compare.
+          if ($new_settings[$field] != $value) {
+            // Skip question.
+            continue 2;
+          }
         }
       }
     }
@@ -267,7 +277,10 @@ function drush_drake_reload_generate($filename = NULL) {
     ),
     'git_flow' => array(
       'depends' => array(
-        'type' => 'make',
+        'type' => array(
+          'make',
+          'git',
+        ),
       ),
       'type' => 'bool',
       'prompt' => dt('Use git flow?'),
@@ -277,9 +290,9 @@ function drush_drake_reload_generate($filename = NULL) {
         'git_flow' => TRUE,
       ),
       'type' => 'string',
-      'required' => TRUE,
+      'required' => FALSE,
       'prompt' => dt("Flowify repo"),
-      'description' => dt('Enter path to flowify (relative to site root, example: "profiles/<profile>").'),
+      'description' => dt('Enter path to flowify (relative to site root, example: "profiles/<profile>"), or just press enter to flowify root.'),
     ),
     'make_file_url' => array(
       'depends' => array(
