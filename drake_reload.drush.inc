@@ -160,7 +160,7 @@ function drake_reload_run_questions($questions, $settings) {
         }
         do {
           $def = array_shift($env_default);
-          $env = drush_prompt("Env: ", $def, FALSE);
+          $env = drush_prompt($question['prompt'], $def, FALSE);
           if (!empty($env)) {
             $parts = explode(',', $env, 3);
             $env_id = trim($parts[0]);
