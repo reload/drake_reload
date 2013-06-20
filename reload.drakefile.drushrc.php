@@ -328,9 +328,8 @@ function reload_import_db($context) {
     // handles directly and avoid this, but then we'd have to implement all the
     // logic of drush_shell_proc_open and piping manually.
     $err_file = drush_tempnam('drake_reload_');
-    $command = $cat_command . " 2>>$err_file "  . $file . ' | ' . $res['output'] . "2>>$err_file";
 
-    $res = drush_shell_exec($command);
+    $res = drush_shell_exec('%s 2>>%s %s | %s 2>>%s', $cat_command, $err_file, $file, $res['output'], $err_file);
     $errors = file_get_contents($err_file);
     if (!$res || !empty($errors)) {
       foreach (explode("\n", $errors) as $error) {
@@ -379,16 +378,15 @@ EOF;
   // flow complains.
   $branches = array('master', 'develop');
   foreach ($branches as $branch) {
-    // Check whether the branch exists. git branch doesn't like that.
-    $command = 'git --git-dir=' . $context['git-root'] . '/.git branch --list ' . $branch;
-    drush_shell_exec($command);
+    // Check whether the branch exists. git branch doesn't if it does.
+    drush_shell_exec('git --git-dir=%s/.git branch --list %s', $context['git-root'], $branch);
     $output = drush_shell_exec_output();
     if (!empty($output)) {
       continue;
     }
     // Else tell git to create a remote tracking branch.
-    $command = 'git --git-dir=' . $context['git-root'] . '/.git branch -t ' . $context['prefix'] . $branch . ' remotes/origin/' . $context['prefix'] . $branch;
-    if (!drush_shell_exec_interactive($command)) {
+    $branch_name = $context['prefix'] . $branch;
+    if (!drush_shell_exec_interactive('git --git-dir=%s/.git branch -t %s remotes/origin/%s', $context['git-root'], $branch_name, $branch_name)) {
       return drake_action_error(dt('Error checking out branch "@branch"', array('@branch' => $branch)));
     }
   }
@@ -419,8 +417,7 @@ function reload_ding_build($context) {
 
   // Temporary directory for ding_deploy checkout.
   $deploy = drush_tempdir('ding_deploy_') . '/ding-deploy';
-  $command = 'git 2>&1 clone ' . $context['repository'] . ' ' . $deploy;
-  if (!drush_shell_exec($command)) {
+  if (!drush_shell_exec('git 2>&1 clone %s %s', $context['repository'], $deploy)) {
     foreach (drush_shell_exec_output() as $line) {
       drush_log('git: ' . $line, 'error');
     }
@@ -441,14 +438,12 @@ function reload_ding_build($context) {
   }
 
   // Copy ding.profile into the profile folder.
-  $command = 'cp ' . $deploy . '/ding.profile ' . $context['root'] . '/profiles/ding';
-  if (!drush_shell_exec($command)) {
+  if (!drush_shell_exec('cp %s/ding.profile %s/profiles/ding', $deploy, $context['root'])) {
     return drake_action_error(dt('Error copying ding.profile.'));
   }
 
   // Copy the drakefile into the profile folder.
-  $command = 'cp ' . $deploy . '/drakefile.php ' . $context['root'] . '/profiles/ding';
-  if (!drush_shell_exec($command)) {
+  if (!drush_shell_exec('cp %s/drakefile.php %s/profiles/ding', $deploy, $context['root'])) {
     return drake_action_error(dt('Error copying drakefile.'));
   }
 }
@@ -476,8 +471,7 @@ function reload_ding_rebuild($context) {
 
   // Temporary directory for ding_deploy checkout.
   $deploy = drush_tempdir('ding_deploy_') . '/ding-deploy';
-  $command = 'git 2>&1 clone ' . $context['repository'] . ' ' . $deploy;
-  if (!drush_shell_exec($command)) {
+  if (!drush_shell_exec('git 2>&1 clone %s %s', $context['repository'], $deploy)) {
     foreach (drush_shell_exec_output() as $line) {
       drush_log('git: ' . $line, 'error');
     }
@@ -485,8 +479,7 @@ function reload_ding_rebuild($context) {
     return drake_action_error(dt('Error cloning ding_deploy from "@repo"', array('@repo' => $context['repository'])));
   }
 
-  $command = 'rm -rf 2>&1 ' . $profile;
-  if (!drush_shell_exec($command)) {
+  if (!drush_shell_exec('rm -rf 2>&1 %s', $profile)) {
     foreach (drush_shell_exec_output() as $line) {
       drush_log('rm: ' . $line, 'error');
     }
@@ -508,19 +501,16 @@ function reload_ding_rebuild($context) {
   }
 
   // Copy ding.profile into the profile folder.
-  $command = 'cp ' . $deploy . '/ding.profile ' . $context['root'] . '/profiles/ding';
-  if (!drush_shell_exec($command)) {
+  if (!drush_shell_exec('cp %s/ding.profile %s/profiles/ding', $deploy, $context['root'])) {
     return drake_action_error(dt('Error copying ding.profile.'));
   }
 
   // Copy the drakefile into the site/all/drush folder.
   // Create the dir.
-  $command = 'mkdir -p ' . $context['root'] . '/sites/all/drush';
-  if (!drush_shell_exec($command)) {
+  if (!drush_shell_exec('mkdir -p %s/sites/all/drush', $context['root'])) {
     return drake_action_error(dt('Error creating sites/all/drush.'));
   }
-  $command = 'cp ' . $deploy . '/drakefile.php ' . $context['root'] . '/sites/all/drush';
-  if (!drush_shell_exec($command)) {
+  if (!drush_shell_exec('cp %s/drakefile.php %s/sites/all/drush', $deploy, $context['root'])) {
     return drake_action_error(dt('Error copying drakefile.'));
   }
 }

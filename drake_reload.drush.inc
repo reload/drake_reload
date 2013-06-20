@@ -466,7 +466,7 @@ Finish by entering an empty alias.'),
     file_put_contents($filename, $contents);
     if (!empty($tmp_file)) {
       drush_print(dt('Difference from previous:'));
-      drush_shell_exec_interactive('diff ' . $tmp_file . ' ' . $filename);
+      drush_shell_exec_interactive('diff %s %s', $tmp_file, $filename);
     }
   }
   else {
@@ -492,9 +492,7 @@ function drush_drake_reload_install() {
       $fetch = drush_confirm(dt('mole_zero detected, refresh it?'));
     }
     if ($fetch) {
-      $command = 'scp 2>&1 reload@ding.reload.dk:mole_zero/r.aliases.drushrc.php ' .
-        $per_user_config_dir . '/r.aliases.drushrc.php';
-      $res = drush_shell_exec($command);
+      $res = drush_shell_exec('scp 2>&1 reload@ding.reload.dk:mole_zero/r.aliases.drushrc.php %s/r.aliases.drushrc.php', $per_user_config_dir);
       $errors = file_get_contents($err_file);
       if (!$res) {
         drush_print('Error fetching r.aliases.drushrc.php, scp output:');
