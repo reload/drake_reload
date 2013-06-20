@@ -275,6 +275,14 @@ function drush_drake_reload_generate($filename = NULL) {
         'ding' => 'Ding',
       ),
     ),
+    'git_branch' => array(
+      'type' => 'string',
+      'depends' => array(
+        'type' => 'git',
+      ),
+      'required' => FALSE,
+      'prompt' => dt('Branch to check out (empty for default).'),
+    ),
     'git_flow' => array(
       'depends' => array(
         'type' => array(
@@ -345,6 +353,7 @@ Finish by entering an empty alias.'),
   }
   $global_replacements['%core%'] = $settings['core'];
   $global_replacements['%site_name%'] = $settings['site_name'];
+  $global_replacements['%git_branch%'] = $settings['git_branch'];
   $global_replacements['%flow_path%'] = $settings['flow_path'];
   $global_replacements['%make_file_url%'] = $settings['make_file_url'];
   $global_replacements['%make_file_path%'] = empty($settings['make_file_path']) ? "makefile" : "[@self:site:root]/" . $settings['make_file_path'];
@@ -380,6 +389,8 @@ Finish by entering an empty alias.'),
       elseif ($settings['type'] == 'git') {
         $context[] = '  // Git repository.';
         $context[] = "  'repository' => '%git_url%',";
+        $context[] = '  // Branch to checkout.';
+        $context[] = "  'branch' => '%git_branch%',";
       }
       elseif ($settings['type'] == 'ding') {
         $context[] = '  // ding_deploy repository.';

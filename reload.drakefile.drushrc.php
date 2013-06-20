@@ -23,8 +23,10 @@ $tasks['reload-situs'] = array(
  * Build a site by cloning a git repository.
  */
 $tasks['reload-git-clone'] = array(
-  'action' => 'shell',
-  'command' => context('cd [root:file:dirname]; git clone [repo] [root:file:basename]'),
+  'action' => 'reload-git-clone',
+  'directory' => context('root'),
+  'repository' => context('repository'),
+  'branch' => context_optional('branch', ''),
 );
 
 /**
@@ -238,6 +240,48 @@ $tasks['reload-load-db'] = array(
   'file' => context('file'),
   'target' => context('@sync_target'),
 );
+
+/**
+ * Action to clone a repository.
+ */
+$actions['reload-git-clone'] = array(
+  'callback' => 'reload_git_clone',
+  'parameters' => array(
+    'directory' => 'Directory to clone into',
+    'repository' => 'Repository to clone',
+    'branch' => array(
+      'description' => 'Branch to check out.',
+      'default' => '',
+    ),
+  ),
+);
+
+/**
+ * Clone a repository.
+ */
+function reload_git_clone($context) {
+  if (!drush_shell_exec('git 2>&1 clone %s %s', $context['repository'], $context['directory'])) {
+    foreach (drush_shell_exec_output() as $line) {
+      drush_log('git: ' . $line, 'error');
+    }
+    return drake_action_error(dt('Error cloning repository.'));
+  }
+
+  if (!empty($context['branch'])) {
+    $cwd = getcwd();
+    // Change into the working copy of the cloned repo.
+    chdir($context['directory']);
+
+    if (!drush_shell_exec('git 2>&1 checkout -b %s %s', $context['branch'], 'origin/' . $context['branch'])) {
+      chdir($cwd);
+      foreach (drush_shell_exec_output() as $line) {
+        drush_log('git: ' . $line, 'error');
+      }
+      return drake_action_error(dt('Could not check out @branch branch from @repo.', array('@branch' => $context['branch'], '@repo' => $context['repository'])));
+    }
+    chdir($cwd);
+  }
+}
 
 /*
  * Action that loads an SQL file.

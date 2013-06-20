@@ -55,7 +55,7 @@ $tasks['build-git'] = array(
   'help' => 'Build site from a git repo.',
   'context' => array(
     'root' => drake_argument(1, 'Directory to build to.'),
-    'repo' => context('repository'),
+    'repository' => context('repository'),
   ),
 );
 
@@ -75,10 +75,10 @@ $tasks['rebuild-git'] = array(
  */
 $tasks['build-ding'] = array(
   'depends' => array('reload-ding-build'),
-  'help' => 'Build site from a ding_deploy repo.',
+  'help' => 'Build site from a ding_deploy repository.',
   'context' => array(
     'root' => drake_argument(1, 'Directory to build to.'),
-    'repo' => context('repository'),
+    'repository' => context('repository'),
   ),
 );
 
@@ -90,7 +90,7 @@ $tasks['rebuild-ding'] = array(
   'help' => 'Rebuild the current site.',
   'context' => array(
     'root' => context('@self:site:root'),
-    'repo' => context('repository'),
+    'repository' => context('repository'),
   ),
 );
 
