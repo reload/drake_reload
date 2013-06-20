@@ -493,7 +493,6 @@ function drush_drake_reload_install() {
     }
     if ($fetch) {
       $res = drush_shell_exec('scp 2>&1 reload@ding.reload.dk:mole_zero/r.aliases.drushrc.php %s/r.aliases.drushrc.php', $per_user_config_dir);
-      $errors = file_get_contents($err_file);
       if (!$res) {
         drush_print('Error fetching r.aliases.drushrc.php, scp output:');
         drush_print(implode("\n", drush_shell_exec_output()));
