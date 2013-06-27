@@ -103,7 +103,7 @@ $tasks['ci-build-make'] = array(
   'depends' => 'reload-ci-build-make',
   'context' => array(
     'root' => drake_argument(1, 'Directory to build to.'),
-    'make-file' => context('%make_file_path%'),
+    'make-file' => '%ci_make_file_path%',
   ),
 );
 

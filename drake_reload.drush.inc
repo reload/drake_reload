@@ -359,6 +359,9 @@ Finish by entering an empty alias.'),
   $global_replacements['%make_file_path%'] = empty($settings['make_file_path']) ? "makefile" : "[@self:site:root]/" . $settings['make_file_path'];
   $global_replacements['%git_url%'] = $settings['git_url'];
   $global_replacements['%ding_url%'] = $settings['ding_url'];
+  // Bit of a hack, but we'd rather avoid another question. This'll work for the
+  // moment.
+  $global_replacements['%ci_make_file_path%'] = empty($settings['make_file_path']) ? "build.make" : basename($settings['make_file_path']);
 
   $new_chunks = array();
   foreach ($chunks as &$chunk) {
