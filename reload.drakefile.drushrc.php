@@ -27,6 +27,8 @@ $tasks['reload-git-clone'] = array(
   'directory' => context('root'),
   'repository' => context('repository'),
   'branch' => context_optional('branch', ''),
+  'sha' => context_optional('sha', ''),
+  'reference' => context_optional('reference', ''),
 );
 
 /**
@@ -53,6 +55,28 @@ $tasks['reload-ding-rebuild'] = array(
   'action' => 'reload-ding-rebuild',
   'root' => context('root'),
   'repository' => context('repository'),
+);
+
+/**
+ * Build the currently checked out revision using make.
+ *
+ * Requires some hoop-jumping involving rewriting the makefile.
+ */
+$tasks['reload-ci-build-make'] = array(
+  'action' => 'reload-ci-build-make',
+  'root' => context('root'),
+  'make-file' => context('make-file'),
+);
+
+/**
+ * Build the currently checked out revision using git.
+ *
+ * While this uses git to check out, it uses the --reference option to use the
+ * current repo as a cache. Saves network traffic.
+ */
+$tasks['reload-ci-build-git'] = array(
+  'action' => 'reload-ci-build-git',
+  'root' => context('root'),
 );
 
 /*
@@ -260,27 +284,44 @@ $actions['reload-git-clone'] = array(
  * Clone a repository.
  */
 function reload_git_clone($context) {
-  if (!drush_shell_exec('git 2>&1 clone %s %s', $context['repository'], $context['directory'])) {
+  $args = '';
+  if (!empty($context['reference'])) {
+    $args = '--reference ' . $context['reference'];
+  }
+  if (!drush_shell_exec('git 2>&1 clone ' . $args . ' %s %s', $context['repository'], $context['directory'])) {
     foreach (drush_shell_exec_output() as $line) {
       drush_log('git: ' . $line, 'error');
     }
     return drake_action_error(dt('Error cloning repository.'));
   }
 
-  if (!empty($context['branch'])) {
-    $cwd = getcwd();
-    // Change into the working copy of the cloned repo.
-    chdir($context['directory']);
-
-    if (!drush_shell_exec('git 2>&1 checkout -b %s %s', $context['branch'], 'origin/' . $context['branch'])) {
-      chdir($cwd);
-      foreach (drush_shell_exec_output() as $line) {
-        drush_log('git: ' . $line, 'error');
-      }
-      return drake_action_error(dt('Could not check out @branch branch from @repo.', array('@branch' => $context['branch'], '@repo' => $context['repository'])));
-    }
-    chdir($cwd);
+  if (empty($context['branch']) && empty($context['sha'])) {
+    return TRUE;
   }
+
+  $cwd = getcwd();
+  // Change into the working copy of the cloned repo.
+  chdir($context['directory']);
+
+  $res = TRUE;
+  if (!empty($context['sha'])) {
+    $what = $context['sha'];
+    $git_res = drush_shell_exec('git 2>&1 checkout %s', $context['sha']);
+  }
+  elseif (!empty($context['branch'])) {
+    $what = $context['branch'];
+    $git_res = drush_shell_exec('git 2>&1 checkout -b %s %s', $context['branch'], 'origin/' . $context['branch']);
+  }
+
+  if (!$git_res) {
+    foreach (drush_shell_exec_output() as $line) {
+      drush_log('git: ' . $line, 'error');
+    }
+    $res = drake_action_error(dt('Could not check out @what branch from @repo.', array('@branch' => $what, '@repo' => $context['repository'])));
+  }
+
+  chdir($cwd);
+  return $res;
 }
 
 /*
@@ -512,6 +553,131 @@ function reload_ding_rebuild($context) {
   }
   if (!drush_shell_exec('cp %s/drakefile.php %s/sites/all/drush', $deploy, $context['root'])) {
     return drake_action_error(dt('Error copying drakefile.'));
+  }
+}
+
+$actions['reload-ci-build-make'] = array(
+  'callback' => 'reload_ci_build_make',
+  'parameters' => array(
+    'root' => 'The directory to build into.',
+    'make-file' => "The source makefile that's massaged.",
+  ),
+);
+
+/**
+ * Build a make site for CI.
+ *
+ * Attempts to rewrite the makefile to fetch the exact same version as is
+ * checked out in the current dir.
+ */
+function reload_ci_build_make($context) {
+  // Figure out the SHA and origin of the current dir.
+  $sha = trim(`git rev-parse HEAD`);
+  if (empty($sha)) {
+    return drake_action_error(dt('Could not find revision of current directory.'));
+  }
+  $origin = trim(`git ls-remote --get-url`);
+  if (empty($origin)) {
+    return drake_action_error(dt('Could not find origin of current directory.'));
+  }
+
+  $make_data = file_get_contents($context['make-file']);
+  if (empty($make_data)) {
+    return drake_action_error(dt('Could not read makefile.'));
+  }
+
+  $make_data = explode("\n", $make_data);
+  foreach ($make_data as $line) {
+    if (preg_match("/^(\w+)(?:\[(\w+)\])((\[\w+\])+)\s+=\s+\"?([^\"]*)\"?/", $line, $matches)) {
+      if ($matches[3] == '[download][url]' && $matches[5] == $origin) {
+        $type = $matches[1];
+        $project_name = $matches[2];
+        break;
+      }
+    }
+  }
+
+  if (empty($project_name)) {
+    drake_action_error(dt('Could not find repoository in make file.'));
+  }
+
+  $new_make_file = array();
+  foreach ($make_data as $line) {
+    if (preg_match("/^($type)(?:\[(${project_name})\])((\[\w+\])+)\s+=\s+\"?([^\"]*)\"?/", $line, $matches)) {
+      if ($matches[3] == '[download][url]' && $matches[5] == $origin) {
+        $new_make_file[] = $line;
+        // Add new revision specifier.
+        $new_make_file[] = $type . '[' . $project_name . '][download][revision] = ' . $sha;
+      }
+      elseif (preg_match('/^\[(branch|tag|revision)\]$/', $matches[4])) {
+        // Remove previous tag/branch/revision specifiers.
+      }
+      else {
+        $new_make_file[] = $line;
+      }
+    }
+    else {
+      $new_make_file[] = $line;
+    }
+  }
+
+  $tmp_make = drush_tempnam('drake_reload_make');
+  if (!file_put_contents($tmp_make, implode("\n", $new_make_file))) {
+    return drake_action_error(dt('Could not save temporary make file.'));
+  }
+
+  $args = array(
+    'build',
+    $context['root'],
+    'makefile=' . $tmp_make,
+  );
+  $res = drush_invoke_process('@none', 'drake', $args, array(), TRUE);
+
+  if (!$res || $res['error_status'] != 0) {
+    drush_set_error(dt('Building failed.'));
+  }
+}
+
+$actions['reload-ci-build-git'] = array(
+  'callback' => 'reload_ci_build_git',
+  'parameters' => array(
+    'root' => 'The directory to build into.',
+  ),
+);
+
+/**
+ * Build a git site for CI.
+ *
+ * Clones the repo and checks out the same SHA as is in the current directory,
+ * but uses --reference to save bandwidth, while still working like cloning the
+ * origin.
+ */
+function reload_ci_build_git($context) {
+  $git_root = `git rev-parse --show-toplevel`;
+  if (empty($git_root)) {
+    return drake_action_error(dt('Could not find a git checkout in current directory.'));
+  }
+
+  // Figure out the SHA and origin of the current dir.
+  $sha = trim(`git rev-parse HEAD`);
+  if (empty($sha)) {
+    return drake_action_error(dt('Could not find revision of current directory.'));
+  }
+  $origin = trim(`git ls-remote --get-url`);
+  if (empty($origin)) {
+    return drake_action_error(dt('Could not find origin of current directory.'));
+  }
+
+  $args = array(
+    'build',
+    $context['root'],
+    'sha=' . $sha,
+    'reference=' . $git_root,
+  );
+  $res = drush_invoke_process('@self', 'drake', $args, array(), TRUE);
+
+  if (!$res || $res['error_status'] != 0) {
+    drush_set_error(dt('Building failed.'));
   }
 }
 

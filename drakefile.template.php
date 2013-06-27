@@ -95,6 +95,31 @@ $tasks['rebuild-ding'] = array(
 );
 
 /*
+ * Build site for CI testing.
+ *
+ * Assumes it's being run from inside a git checkout.
+ */
+$tasks['ci-build-make'] = array(
+  'depends' => 'reload-ci-build-make',
+  'context' => array(
+    'root' => drake_argument(1, 'Directory to build to.'),
+    'make-file' => context('%make_file_path%'),
+  ),
+);
+
+/*
+ * Build site for CI testing.
+ *
+ * Assumes it's being run from inside a git checkout.
+ */
+$tasks['ci-build-git'] = array(
+  'depends' => 'reload-ci-build-git',
+  'context' => array(
+    'root' => drake_argument(1, 'Directory to build to.'),
+  ),
+);
+
+/*
  * Import database from "%env_name%".
  */
 $tasks['import-%env%'] = array(

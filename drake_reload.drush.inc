@@ -412,6 +412,15 @@ Finish by entering an empty alias.'),
       $chunk = preg_replace('{\$tasks\[\'((?:re)?build)-(make|git|ding)\'\]}', '\$tasks[\'\1\']', $chunk);
     }
 
+    // Filter out ci-build tasks that's not needed.
+    if (preg_match('{\$tasks\[\'(ci-build)-(make|git|ding)\'\] = }', $chunk, $matches)) {
+      if ($matches[2] != $settings['type']) {
+        continue;
+      }
+      // Fix the task name.
+      $chunk = preg_replace('{\$tasks\[\'(ci-build)-(make|git|ding)\'\]}', '\$tasks[\'\1\']', $chunk);
+    }
+
     // Filter out sanitize tasks that's not needed.
     if (preg_match('{\$tasks\[\'(sanitize)-(nonding|ding)([^\']*)\'\] = }', $chunk, $matches)) {
       if (($matches[2] == 'nonding' && $settings['type'] == 'ding') ||
