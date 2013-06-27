@@ -576,7 +576,7 @@ function reload_ci_build_make($context) {
   if (empty($sha)) {
     return drake_action_error(dt('Could not find revision of current directory.'));
   }
-  $origin = trim(`git ls-remote --get-url`);
+  $origin = trim(`git config --get remote.origin.url`);
   if (empty($origin)) {
     return drake_action_error(dt('Could not find origin of current directory.'));
   }
@@ -663,7 +663,7 @@ function reload_ci_build_git($context) {
   if (empty($sha)) {
     return drake_action_error(dt('Could not find revision of current directory.'));
   }
-  $origin = trim(`git ls-remote --get-url`);
+  $origin = trim(`git config --get remote.origin.url`);
   if (empty($origin)) {
     return drake_action_error(dt('Could not find origin of current directory.'));
   }
