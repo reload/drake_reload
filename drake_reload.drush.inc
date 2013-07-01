@@ -370,6 +370,8 @@ Finish by entering an empty alias.'),
     // Clean up some var_export ugliness.
     $dump = preg_replace('/array \(/', 'array(', $dump);
     $dump = preg_replace('/=>\s+/', '=> ', $dump);
+    $dump = preg_replace('/=> true,/', '=> TRUE', $dump);
+    $dump = preg_replace('/=> false,/', '=> FALSE', $dump);
     if (preg_match('{\$drake_reload = }', $chunk)) {
       $chunk = preg_replace('{\$drake_reload = array\(.*\);}', "\$drake_reload = " . $dump . ";\n", trim($chunk));
     }
