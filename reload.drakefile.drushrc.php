@@ -668,6 +668,11 @@ function reload_ci_build_git($context) {
     return drake_action_error(dt('Could not find origin of current directory.'));
   }
 
+  // Delete existing build dir.
+  if (file_exists($context['root'])) {
+    drush_delete_dir($context['root']);
+  }
+
   $args = array(
     'build',
     $context['root'],
