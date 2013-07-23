@@ -265,6 +265,94 @@ $tasks['reload-load-db'] = array(
   'target' => context('@sync_target'),
 );
 
+/*
+ * Log information about the current revision into a version.txt.
+ *
+ * Copy this task to your local drakefile if you want to define git-root via a
+ * local context and not directly on the commandline.
+ *
+ * log-envs references OS environment variables.
+ *
+ * Sample invocation (with temporary envs):
+ *   Build_number=123 Build_time="Around Noon" drush @self drake log-version \
+ *     git-root=/path/to/my/git/root log-envs="Build_number, Build_time"
+ */
+$tasks['log-version'] = array(
+  'action' => 'log-version',
+  'log-filename' => context_optional('log-filename', context('[@self:site:root]/version.txt')),
+  'git-root' => context_optional('git-root'),
+  'header' => context_optional('log-header', 'Release Info'),
+  'log-envs' => context_optional('log-envs'),
+);
+
+/*
+ * Log information about the current revision into a version.txt.
+ */
+$actions['log-version'] = array(
+  'default_message' => 'Logging version.',
+  'callback' => 'drake_log_version',
+  'parameters' => array(
+    'log-filename' => 'Output filename.',
+    'header'       => 'Output file header.',
+    'git-root'     => array(
+      'description' => 'Full path to a .git directory.',
+      'default'     => NULL,
+    ),
+    'log-envs'     => array(
+      'description' => 'Comma separated list of environement variables that should be included. Names will be stripped of underscores.',
+      'default'     => NULL,
+    ),
+  ),
+);
+
+/**
+ * Logs details about a revision into a text-file.
+ */
+function drake_log_version($context) {
+  $output_lines = array();
+
+  // Start with the header with a nice underlining.
+  $output_lines[] = $context['header'];
+  $output_lines[] = str_repeat('-', strlen($context['header']));
+
+  // Determine GIT information if git-root is known.
+  if ($context['git-root'] !== NULL) {
+    $cmds = array(
+      'SHA' => 'rev-parse HEAD',
+      'Tags' => 'tag --contains HEAD',
+      'Branch' => 'symbolic-ref --short -q HEAD',
+    );
+
+    // Map keys to command output.
+    $mapper = function($cmd) use ($context){
+      if (!drush_shell_exec("git --git-dir=%s/.git $cmd", $context['git-root'])) {
+        return drake_action_error(dt('Error running git command at git-root "@root"', array('@root' => $context['git-root'])));
+      }
+      $output = drush_shell_exec_output();
+
+      // Implode or return ''.
+      return (empty($output) || !is_array($output)) ? '' : implode(' ', $output);
+    };
+
+    $cmds = array_map($mapper, $cmds);
+    foreach ($cmds as $key => $value) {
+      $output_lines[] = $key . ': ' . $value;
+    }
+  }
+
+  // Get enviroment variables if any.
+  if ($context['log-envs'] !== NULL) {
+    $envs = explode(',', $context['log-envs']);
+
+    foreach ($envs as $env) {
+      $env = trim($env);
+      $output_lines[] = str_replace('_', ' ', $env) . ': ' . getenv($env);
+    }
+  }
+
+  file_put_contents($context['log-filename'], implode("\r\n", $output_lines));
+}
+
 /**
  * Action to clone a repository.
  */
