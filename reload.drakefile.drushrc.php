@@ -337,15 +337,17 @@ function drake_log_version($context) {
   // Determine GIT information if git-root is known.
   if ($context['git-root'] !== NULL) {
 
-    // Determine branch - this takes some manual handling.
-    if (!drush_shell_exec("git --git-dir=%s/.git symbolic-ref -q HEAD", $context['git-root'])) {
-      $branch = '(no branch)';
+    if (in_array('git_branch', $log_include)) {
+      // Determine branch - this takes some manual handling.
+      if (!drush_shell_exec("git --git-dir=%s/.git symbolic-ref -q HEAD", $context['git-root'])) {
+        $branch = '(no branch)';
+      }
+      else {
+        $output = implode(drush_shell_exec_output());
+        $branch = empty($output) ? '(no branch)' : str_replace('refs/heads/', '', $output);
+      }
+      $log_lines['Branch'] = $branch;
     }
-    else {
-      $output = implode(drush_shell_exec_output());
-      $branch = empty($output) ? '(no branch)' : str_replace('refs/heads/', '', $output);
-    }
-    $log_lines['Branch'] = $branch;
 
     // Remaining commands are straight forward so handle them the same way.
     if (in_array('git_sha', $log_include)) {
