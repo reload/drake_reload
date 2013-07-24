@@ -283,8 +283,8 @@ $tasks['log-version'] = array(
   'git-root' => context_optional('git-root'),
   'header' => context_optional('log-header', 'Release Info'),
   'log-envs' => context_optional('log-envs'),
-  'log-enabled' => context_optional('log-enabled'),
-  'log-disabled' => context_optional('log-disabled'),
+  'log-include' => context_optional('log-include'),
+  'log-exclude' => context_optional('log-exclude'),
 );
 
 /*
@@ -300,11 +300,11 @@ $actions['log-version'] = array(
       'description' => 'Full path to a .git directory.',
       'default'     => NULL,
     ),
-    'log-enabled'   => array(
+    'log-include'   => array(
       'description' => 'Commaseperated list of buildin values to log, currently supports git_branch, git_tag, git_sha or all',
       'default'     => 'all',
     ),
-    'log-disabled'   => array(
+    'log-exclude'   => array(
       'description' => 'Commaseperated list of buildin values not to log, currently supports git_branch, git_tag, git_sha',
       'default'     => '',
     ),
@@ -321,15 +321,15 @@ $actions['log-version'] = array(
 function drake_log_version($context) {
 
   // Prepare switches that tells us what to log.
-  if ($context['log-enabled'] == 'all') {
-    $context['log-enabled'] = 'git_branch,git_tag,git_sha';
+  if ($context['log-include'] == 'all') {
+    $context['log-include'] = 'git_branch,git_tag,git_sha';
   }
   // Split and trim enabled things to log.
-  $log_enabled = array_map('trim', explode(',', $context['log-enabled']));
+  $log_include = array_map('trim', explode(',', $context['log-include']));
 
-  // Remove disabled things if any are specified.
-  if (!empty($context['log-disabled'])) {
-    $log_enabled = array_diff($log_enabled, array_map('trim', explode(',', $context['log-disabled'])));
+  // Remove excluded things if any are specified.
+  if (!empty($context['log-exclude'])) {
+    $log_include = array_diff($log_include, array_map('trim', explode(',', $context['log-exclude'])));
   }
 
   // Keys/values to be logged.
@@ -348,11 +348,11 @@ function drake_log_version($context) {
     $log_lines['Branch'] = $branch;
 
     // Remaining commands are straight forward so handle them the same way.
-    if (in_array('git_sha', $log_enabled)) {
+    if (in_array('git_sha', $log_include)) {
      $cmds['SHA'] = 'rev-parse HEAD';
     }
 
-    if (in_array('git_tag', $log_enabled)) {
+    if (in_array('git_tag', $log_include)) {
      $cmds['Tags'] = 'tag --contains HEAD';
     }
 
