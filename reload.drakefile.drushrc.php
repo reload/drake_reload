@@ -317,16 +317,27 @@ function drake_log_version($context) {
 
   // Determine GIT information if git-root is known.
   if ($context['git-root'] !== NULL) {
+
+    // Determine branch - this takes some manual handling.
+    if (!drush_shell_exec("git --git-dir=%s/.git symbolic-ref -q HEAD", $context['git-root'])) {
+      $branch = '(no branch)';
+    }
+    else {
+      $output = implode(drush_shell_exec_output());
+      $branch = empty($output) ? '(no branch)' : str_replace('refs/heads/', '', $output);
+    }
+    $output_lines[] = 'Branch: ' . $branch;
+
+    // Remaining commands are straight forward so handle them the same way.
     $cmds = array(
       'SHA' => 'rev-parse HEAD',
       'Tags' => 'tag --contains HEAD',
-      'Branch' => 'symbolic-ref --short -q HEAD',
     );
 
     // Map keys to command output.
     $mapper = function($cmd) use ($context){
       if (!drush_shell_exec("git --git-dir=%s/.git $cmd", $context['git-root'])) {
-        return drake_action_error(dt('Error running git command at git-root "@root"', array('@root' => $context['git-root'])));
+        return drake_action_error(dt('Error running git command "@cmd" at git-root "@root". Output: @output', array('@root' => $context['git-root'], '@cmd' => $cmd, '@output' => implode("\n", drush_shell_exec_output()))));
       }
       $output = drush_shell_exec_output();
 
