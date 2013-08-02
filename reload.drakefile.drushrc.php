@@ -300,6 +300,8 @@ $tasks['log-version'] = array(
   'git-root' => context_optional('git-root'),
   'header' => context_optional('log-header', 'Release Info'),
   'log-envs' => context_optional('log-envs'),
+  'log-include' => context_optional('log-include'),
+  'log-exclude' => context_optional('log-exclude'),
 );
 
 /*
@@ -315,6 +317,14 @@ $actions['log-version'] = array(
       'description' => 'Full path to a .git directory.',
       'default'     => NULL,
     ),
+    'log-include'   => array(
+      'description' => 'Commaseperated list of buildin values to log, currently supports git_branch, git_tag, git_sha or all',
+      'default'     => 'all',
+    ),
+    'log-exclude'   => array(
+      'description' => 'Commaseperated list of buildin values not to log, currently supports git_branch, git_tag, git_sha',
+      'default'     => '',
+    ),
     'log-envs'     => array(
       'description' => 'Comma separated list of environement variables that should be included. Names will be stripped of underscores.',
       'default'     => NULL,
@@ -326,34 +336,59 @@ $actions['log-version'] = array(
  * Logs details about a revision into a text-file.
  */
 function drake_log_version($context) {
-  $output_lines = array();
 
-  // Start with the header with a nice underlining.
-  $output_lines[] = $context['header'];
-  $output_lines[] = str_repeat('-', strlen($context['header']));
+  // Prepare switches that tells us what to log.
+  if ($context['log-include'] == 'all') {
+    $context['log-include'] = 'git_branch,git_tag,git_sha';
+  }
+  // Split and trim enabled things to log.
+  $log_include = array_map('trim', explode(',', $context['log-include']));
 
+  // Remove excluded things if any are specified.
+  if (!empty($context['log-exclude'])) {
+    $log_include = array_diff($log_include, array_map('trim', explode(',', $context['log-exclude'])));
+  }
+
+  // Keys/values to be logged.
+  $log_lines = array();
   // Determine GIT information if git-root is known.
   if ($context['git-root'] !== NULL) {
-    $cmds = array(
-      'SHA' => 'rev-parse HEAD',
-      'Tags' => 'tag --contains HEAD',
-      'Branch' => 'symbolic-ref --short -q HEAD',
-    );
 
-    // Map keys to command output.
-    $mapper = function($cmd) use ($context){
-      if (!drush_shell_exec("git --git-dir=%s/.git $cmd", $context['git-root'])) {
-        return drake_action_error(dt('Error running git command at git-root "@root"', array('@root' => $context['git-root'])));
+    if (in_array('git_branch', $log_include)) {
+      // Determine branch - this takes some manual handling.
+      if (!drush_shell_exec("git --git-dir=%s/.git symbolic-ref -q HEAD", $context['git-root'])) {
+        $branch = '(no branch)';
       }
-      $output = drush_shell_exec_output();
+      else {
+        $output = implode(drush_shell_exec_output());
+        $branch = empty($output) ? '(no branch)' : str_replace('refs/heads/', '', $output);
+      }
+      $log_lines['Branch'] = $branch;
+    }
 
-      // Implode or return ''.
-      return (empty($output) || !is_array($output)) ? '' : implode(' ', $output);
-    };
+    // Remaining commands are straight forward so handle them the same way.
+    if (in_array('git_sha', $log_include)) {
+     $cmds['SHA'] = 'rev-parse HEAD';
+    }
 
-    $cmds = array_map($mapper, $cmds);
-    foreach ($cmds as $key => $value) {
-      $output_lines[] = $key . ': ' . $value;
+    if (in_array('git_tag', $log_include)) {
+     $cmds['Tags'] = 'tag --contains HEAD';
+    }
+
+    if (!empty($cmds)) {
+      // Map keys to command output.
+      $mapper = function($cmd) use ($context){
+        if (!drush_shell_exec("git --git-dir=%s/.git $cmd", $context['git-root'])) {
+          return drake_action_error(dt('Error running git command "@cmd" at git-root "@root". Output: @output', array('@root' => $context['git-root'], '@cmd' => $cmd, '@output' => implode("\n", drush_shell_exec_output()))));
+        }
+        $output = drush_shell_exec_output();
+
+        // Implode or return ''.
+        return (empty($output) || !is_array($output)) ? '' : implode(' ', $output);
+      };
+
+      // Have the mapper run the commands and merge the result into the log_lines.
+      $log_lines = array_merge($log_lines, array_map($mapper, $cmds));
     }
   }
 
@@ -363,11 +398,19 @@ function drake_log_version($context) {
 
     foreach ($envs as $env) {
       $env = trim($env);
-      $output_lines[] = str_replace('_', ' ', $env) . ': ' . getenv($env);
+      $log_lines[str_replace('_', ' ', $env)] = getenv($env);
     }
   }
 
-  file_put_contents($context['log-filename'], implode("\r\n", $output_lines));
+  // Generate output;
+  $output_lines = array();
+  // Start with the header with a nice underlining.
+  $output_lines[] = $context['header'];
+  $output_lines[] = str_repeat('-', strlen($context['header']));
+  foreach ($log_lines as $name => $line) {
+    $output_lines[] = $name . ': ' . $line;
+  }
+  file_put_contents($context['log-filename'], implode("\r\n", $output_lines) . "\r\n");
 }
 
 /**
