@@ -61,11 +61,28 @@ $tasks['reload-ding-rebuild'] = array(
  * Build the currently checked out revision using make.
  *
  * Requires some hoop-jumping involving rewriting the makefile.
+ *
+ * And if the references context is true, we do even more hoop-jumping to ensure
+ * that the main project (which is the one checked out in the current
+ * Directory), is cloned with a reference to the current repository.
+ *
+ * This ensures that commits in the current directory is available in the clone,
+ * and is especially useful if whoever calls us (Jenkins for instance) goes
+ * through the trouble of making, say, GitHub pull request brances (which is
+ * normally not cloned) available.
+ *
+ * Note that this is incompatible with reload-flow-setup. It will produce a
+ * warning and the repo will not be flowified, but the ci-build will complete
+ * (it should be fixed to have a killswitch which ci-build sets, as git flow
+ * doesn't make much sense in a CI context).
+ *
+ * @see reload_ci_build_make() for the horrible details.
  */
 $tasks['reload-ci-build-make'] = array(
   'action' => 'reload-ci-build-make',
   'root' => context('root'),
   'make-file' => context('make-file'),
+  'reference' => context_optional('reference', ''),
 );
 
 /**
@@ -649,6 +666,10 @@ $actions['reload-ci-build-make'] = array(
   'parameters' => array(
     'root' => 'The directory to build into.',
     'make-file' => "The source makefile that's massaged.",
+    'reference' => array(
+      'description' => 'Make the clone of the main project reference the current repository.',
+      'default' => FALSE,
+    ),
   ),
 );
 
@@ -692,16 +713,23 @@ function reload_ci_build_make($context) {
   $new_make_file = array();
   foreach ($make_data as $line) {
     if (preg_match("/^($type)(?:\[(${project_name})\])((\[\w+\])+)\s+=\s+\"?([^\"]*)\"?/", $line, $matches)) {
-      if ($matches[3] == '[download][url]' && $matches[5] == $origin) {
-        $new_make_file[] = $line;
-        // Add new revision specifier.
-        $new_make_file[] = $type . '[' . $project_name . '][download][revision] = ' . $sha;
-      }
-      elseif (preg_match('/^\[(branch|tag|revision)\]$/', $matches[4])) {
-        // Remove previous tag/branch/revision specifiers.
+      if (!$context['reference']) {
+        // Simple case, remove branch/tag/revision specifiers for the project,
+        // and fix it up to the current revision.
+        if ($matches[3] == '[download][url]' && $matches[5] == $origin) {
+          $new_make_file[] = $line;
+          // Add new revision specifier.
+          $new_make_file[] = $type . '[' . $project_name . '][download][revision] = ' . $sha;
+        }
+        elseif (preg_match('/^\[(branch|tag|revision)\]$/', $matches[4])) {
+          // Remove previous tag/branch/revision specifiers.
+        }
+        else {
+          $new_make_file[] = $line;
+        }
       }
       else {
-        $new_make_file[] = $line;
+        // Entirely remove it, we'll build things by hand later.
       }
     }
     else {
@@ -723,6 +751,37 @@ function reload_ci_build_make($context) {
 
   if (!$res || $res['error_status'] != 0) {
     drush_set_error(dt('Building failed.'));
+  }
+
+  if ($context['reference']) {
+    // We're far from done in this case. We removed the project from the
+    // makefile to build Drupal, now we'll have to create the project by
+    // hand. And we currently only support that "the project" is a profile
+    // installed in profiles.
+    $command = 'git clone --reference %s %s %s';
+    drush_shell_cd_and_exec($context['root'] . '/profiles', $command, getcwd(), $origin, $project_name);
+    $command = 'git checkout %s';
+    drush_shell_cd_and_exec($context['root'] . '/profiles/' . $project_name, $command, $sha);
+
+    // Now that we have the proper version checked out, run make.
+    $cwd = getcwd();
+    chdir($context['root'] . '/profiles/' . $project_name);
+    $args = array($project_name . '.make', '.');
+    $options = array(
+      'no-core' => TRUE,
+      'contrib-destination' => '.',
+      // Yes, it really doesn't make sense to use working copy for CI builds,
+      // however, seems that it is needed to make drush make throw an error if
+      // an unknown sha is specified on a project in a makefile. That's a very
+      // unfortunate malfunction, and something we REALLY should look into.
+      'working-copy' => TRUE,
+    );
+    $res = drush_invoke_process('@none', 'make', $args, $options, TRUE);
+    chdir($cwd);
+
+    if (!$res || $res['error_status'] != 0) {
+      drush_set_error(dt('Building failed.'));
+    }
   }
 }
 
