@@ -104,6 +104,7 @@ $tasks['reload-flow-setup'] = array(
   'message' => 'Set up git flow',
   'git-root' => context('git-root'),
   'prefix' => context_optional('flow-prefix', ''),
+  'no-flow' => context_optional('flow-prefix'),
 );
 
 /*
@@ -543,6 +544,10 @@ $actions['reload-git-flow-setup'] = array(
       'description' => 'Branch/tag prefix.',
       'default' => '',
     ),
+    'no-flow' => array(
+      'description' => 'Do not flowify (killswitch).',
+      'default' => NULL,
+    ),
   ),
 );
 
@@ -550,6 +555,10 @@ $actions['reload-git-flow-setup'] = array(
  * Setup git flow in a repository.
  */
 function reload_git_flow_setup($context) {
+  if ($context['no-flow']) {
+    drush_log(dt('Skipping flowifying.'), 'status');
+    return;
+  }
   $prefix = $context['prefix'];
   $config = <<<EOF
 [gitflow "branch"]
@@ -789,6 +798,7 @@ function reload_ci_build_make($context) {
     'build',
     $context['root'],
     'makefile=' . $tmp_make,
+    'no-flow=true',
   );
   $res = drush_invoke_process('@none', 'drake', $args, array(), TRUE);
 
